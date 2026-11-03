@@ -143,13 +143,13 @@ And the ones the media library holds. A theme is a **folder** in the media
 library whose name is the theme's name; list them with
 
 ```jsonc
-{ "action": "list_folders" }   // the media_folders tool: the principal's folders
+{ "action": "list_folders" }   // the media tool: the principal's folders
 ```
 
 **`list_folders` needs a core that carries the media-folders feature**
-(migration `0097`). On a core without it there is no `media_folders` tool to
-call and the media library holds no folders, so the built-in table above is
-the whole list of themes.
+(migration `0097`). On a core without it the `media` tool has no folder
+operation to call and the media library holds no folders, so the built-in
+table above is the whole list of themes.
 
 A folder that holds a `theme.yml` is a theme. **A media theme shadows a
 built-in of the same name**, so the list you fetched is the list to choose

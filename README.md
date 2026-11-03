@@ -244,9 +244,9 @@ place, on purpose.
 `0097`, which arrives in core `v0.33.0`. The plugin's floor stays at
 `v0.30.0` because it degrades correctly: a core without `media_folders` has no
 folders, so it has no media themes, and the library's own built-in themes are
-the right answer. The `media_folders` tool and its `list_folders` operation
-arrive with the same release, so on an older core there is no tool to call
-and the built-in themes are the whole list.
+the right answer. The `media` tool's `list_folders` operation arrives with
+the same release, so on an older core there is nothing to call and the
+built-in themes are the whole list.
 
 ## The chain
 

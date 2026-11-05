@@ -196,6 +196,29 @@ A theme name is a **folder name, not a path**. `theme: ../something` names no
 folder of yours and the render fails saying so. Do not try to reach a theme
 outside the folder the operator made.
 
+**A theme is one file.** The folder holds a `theme.yml` and the look is a
+section of it:
+
+```yaml
+name: Corporate
+styles:                      # the slots a document is drawn from
+  heading.1:
+    color: "1A2B3C"
+textStyles:                  # the styles a word may be written in
+  brand:
+    color: "0B5CAB"
+    bold: true
+```
+
+**A `styles.yml` beside the theme is refused**, and the render fails saying so:
+its content belongs in the `styles:` section of the `theme.yml`, and the file
+beside the theme has to be deleted as well. A folder left over from the older
+two-file format needs that fix before it renders at all.
+
+The same file may carry the slides half's look as well — `colors:`, `fonts:`,
+`style:` — so **one folder can serve a document and a deck**: each half reads
+the section that is its own and leaves the other's alone.
+
 **A theme named in the call outranks the frontmatter.** `options: {"theme":
 "corporate"}` answers for the document: the frontmatter's `theme:` is not read
 at all. Use it when the caller has asked for a specific look; use the
@@ -206,11 +229,30 @@ another name, it is a reason to list the folders again.
 A theme changes the *look* only. Nothing about the text changes, and a document
 in a theme carries no more information than the same document without one.
 
+### Writing a word in a style
+
+A theme's `textStyles:` section names the styles a document may write a word
+in. The built-in `corporate` theme brings two of them — `brand` and `muted`:
+
+```markdown
+Resilience :brand[Bakery] is open.
+```
+
+The eight attributes are `color`, `size`, `font`, `bold`, `italic`,
+`underline`, `strike` and `highlight`, and one may be written over a named
+style: `:brand[Bakery]{color=FF0000}` is that word in red. The reserved name
+`style` writes a word in a style of its own, with no theme behind it —
+`:style[teal]{color=00B4D8}`.
+
+A label is plain text, so `:brand[**Bakery**]` does not honour the emphasis.
+A name the theme does not define is written out as its own source text, so the
+sentence still reads as the sentence that was written.
+
 ## What the round trip does not preserve
 
 A `.docx` is a lower-fidelity form of the Markdown it came from. Word does not
 record that a bold run was a table header rather than bold text, nor which word
-followed a code fence, so a reader cannot recover either. Five losses, all of
+followed a code fence, so a reader cannot recover either. Six losses, all of
 them real, all of them silent:
 
 | # | What you wrote | What comes back | Recoverable? |
@@ -218,21 +260,22 @@ them real, all of them silent:
 | 1 | `\| A \| B \|` header row | `\| **A** \| **B** \|` — the header row returns bold | Library option, not exposed here |
 | 2 | ` ```php ` … ` ``` ` | ` ``` ` … ` ``` ` — the fence survives, the language does not | No |
 | 3 | a fence of **one** line | `` `$x = 1;` `` — inline code, not a block | No |
-| 4 | a quote written as plain indentation | a plain paragraph | No |
+| 4 | a quote of two or more lines | one line — the quote's own line breaks are joined | No |
 | 5 | `"# Title\n"` | `"# Title"` — no trailing newline | Only via a `crlf` line ending, not used here |
+| 6 | `:brand[Bakery]`, in a theme that defines `brand` | the word, bold if the style was — the style and the colour are gone | No |
 
 Two corollaries that bite in practice, both verified against a real round trip:
 
 - **Adjacent code fences merge.** A two-line fence immediately followed by a
   one-line fence comes back as a *single* block holding all three lines. Keep
   code blocks apart with a paragraph of prose if you need them to stay separate.
-- **`options: {"plain": true}` triggers loss 4, and more.** `plain` drops the
+- **`options: {"plain": true}` loses the quote as well.** `plain` drops the
   renderer's decoration — code colouring, quote style, table borders — and
-  dropping the quote *style* is precisely the case the reader cannot recognise.
-  With `plain`, a `>` quote comes back as a plain paragraph **and** a fenced
-  block comes back as two bare prose paragraphs — no fence, and no code
-  formatting either, since `plain` drops the code font along with everything
-  else:
+  dropping the quote *style* is precisely the case the reader cannot
+  recognise: with `plain`, a `>` quote comes back as a plain paragraph **and**
+  a fenced block comes back as two bare prose paragraphs — no fence, and no
+  code formatting either, since `plain` drops the code font along with
+  everything else:
 
   ```text
   plain: true    "> A quoted line."   →  A quoted line.

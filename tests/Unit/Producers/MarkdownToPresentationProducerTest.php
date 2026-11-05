@@ -79,8 +79,7 @@ it('draws a deck in the theme the media library holds', function () {
     $container = OfficeMediaArchive::container();
 
     OfficeMediaArchive::library($container)->withTheme(7, 'house', [
-        'theme.yml' => "name: House\nauthor: House Style Desk\n",
-        'layouts.yml' => "layouts:\n  content: Title and Content\n",
+        'theme.yml' => "name: House\nauthor: House Style Desk\nlayouts:\n  content: Title and Content\n",
     ]);
 
     $producer = OfficeMediaArchive::deckProducer($container);

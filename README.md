@@ -95,9 +95,9 @@ Prefer enabling the extension. The flag exists for the host where you cannot.
 
 ### The host has to allow `cweagans/composer-patches`
 
-`markdown-presentation` writes a few things a released PHPPresentation cannot,
-and gets them from a patch applied to the installed package. Composer runs
-that patch only when the **host** allows the plugin — `allow-plugins` is a
+Both halves write a few things a released PHPPresentation or PHPWord cannot,
+and get them from a patch applied to the installed package. Composer runs
+those patches only when the **host** allows the plugin — `allow-plugins` is a
 root-project setting, and `spora-ai/installer` routes `spora-plugin` packages
 into the host's `plugins/{name}/`, so the host's tree is where the dependency
 lands.
@@ -113,14 +113,17 @@ cweagans/composer-patches contains a Composer plugin which is blocked by your al
 ```
 
 With the entry set to `false`, or with `--no-plugins`, the install succeeds and
-every deck render fails with `MarkdownPresentation\Exception\UnpatchedDependency`
-— which names the plugin and says what to do, so the failure is diagnosable
-rather than mysterious.
+every render fails — the slides half with
+`MarkdownPresentation\Exception\UnpatchedDependency` and the Word half with the
+same refusal under its own namespace — which names the plugin and says what to
+do, so the failure is diagnosable rather than mysterious.
 
-The patch adds five methods to PHPPresentation. When PHPPresentation 1.3.0
-ships them upstream — the changes are queued as the open PRs #1041, #1042 and
-#1043 — `markdown-presentation` drops the composer plugin, the patch and the
-`allow-plugins` entry all at once. Until then the entry is required.
+The patches carry PHPPresentation 1.2.0 and PHPWord 1.4.0 up to upstream's
+master, so that the packages write the elements in the order ECMA-376 names
+them and the parts of a package are found and read as they should be. When
+those changes are released upstream, `markdown-office` drops the composer
+plugin, the patches and the `allow-plugins` entry all at once. Until then the
+entry is required.
 
 ### spora-core version floor
 
@@ -214,12 +217,36 @@ theme's name, and its files are the library's own:
 
 ```
 Corporate/                     ← the folder; "Corporate" is the theme's name
-  theme.yml                    ← the slides manifest (the superset)
-  styles.yml                   ← the word half's slots
-  layouts.yml                  ← the slides half's layout roles
-  text-styles.yml              ← the slides half's named text styles
+  theme.yml                    ← the theme: its identity, its look, its styles
   template.pptx                ← the slides half's master (optional)
 ```
+
+**A theme is one file.** The look a document is drawn in and the look a deck is
+drawn in are two sections of the same `theme.yml` — `styles:` for the Word
+half, `dark:` / `colors:` / `fonts:` / `style:` / `layouts:` for the slides
+half — and what the two share is a theme's name, its description, its author
+and its named text styles.
+
+```yaml
+name: Corporate
+description: The house theme
+author: Ops
+styles:                     # the word half's slots
+  heading.1:
+    color: "1A2B3C"
+colors:                     # the slides half's palette
+  accent1: "#4C1D95"
+textStyles:                 # named styles either half may write in
+  brand:
+    color: "0B5CAB"
+    bold: true
+```
+
+The files of the old format — `styles.yml`, `layouts.yml` and
+`text-styles.yml` — are **refused** when they sit beside a theme, each with a
+message saying what to do: move the content into the section it became and
+delete the file. A file that is quietly not read is a theme that looks like the
+one its author wrote and is not, so the refusal is deliberate.
 
 A document names one in its frontmatter — `theme: corporate` — and the folder's
 UUID resolves as well, so a task can pin a theme by a value that survives a
@@ -233,12 +260,13 @@ and answers for **one principal**. A theme name is a folder name and never a
 path, so `theme: ../other-tenant` names no folder of yours and resolves to
 nothing.
 
-**The Word half is served a projection of the manifest** — `name`,
-`description` and `author` only. The slides manifest accepts colours, fonts
-and a type scale, and the Word loader refuses a key it does not know, so one
-folder cannot hold one manifest unchanged for both halves. The projection is
-the one lossy step in the whole arrangement, and it is stated here, in one
-place, on purpose.
+**Each half is served a projection of the manifest.** Each half refuses a key
+that is not its own, so one folder cannot hold one manifest unchanged for both:
+the Word half reads `styles:` and the slides half reads `colors:` and the rest,
+and each is handed the keys it reads. A key *neither* half reads is kept, so
+the library refuses it with a sentence naming the whole vocabulary rather than
+the manifest being quietly rewritten. The projection is the one lossy step in
+the whole arrangement, and it is stated here, in one place, on purpose.
 
 **Media themes need a core that carries the folders feature** — migration
 `0097`, which arrives in core `v0.33.0`. The plugin's floor stays at
@@ -295,23 +323,26 @@ degrades to the asset's metadata block.
 
 ## Round-trip limits
 
-A `.docx` is a lower-fidelity form of the Markdown it came from. Five documented
+A `.docx` is a lower-fidelity form of the Markdown it came from. Six documented
 losses, all silent: a table's header row returns **bold**; a fenced code block
 returns **without its language**; a **one-line** fence returns as **inline
-code**; a quote written as plain indentation returns as a **plain paragraph**;
-and the **last line has no trailing newline**.
+code**; a quote's own line breaks are joined into one line; the **last line has
+no trailing newline**; and a word written in a **named style** (`:brand[Bakery]`)
+returns as the word — its weight kept, the style and the colour gone.
 
-`options: {"plain": true}` triggers the quote loss as a side effect, because
-dropping the renderer's quote *style* is exactly the case the reader cannot
-recognise — and it also drops the code font, leaving fenced blocks as two bare
-prose paragraphs with no fence at all. Nested bullet and ordered lists work at
-any depth, and remote
-images are never fetched (the library has no HTTP client), so they fall back to
-their alt text.
+`options: {"plain": true}` loses the quote as well, because dropping the
+renderer's quote *style* is exactly the case the reader cannot recognise — and
+it also drops the code font, leaving fenced blocks as two bare prose paragraphs
+with no fence at all. Nested bullet and ordered lists work at any depth, and
+remote images are never fetched (the library has no HTTP client), so they fall
+back to their alt text.
 
 A `.pptx` is a package of positioned boxes. Reading a deck back gives the
-words and their order; the type sizes, the colours and the geometry live in
-the theme and the master, and neither travels. **The pictures do not travel
+words and their order; the type sizes, the colours of the text and the
+geometry live in the theme and the master, and none of them travels. What does
+travel is the **theme** — a deck records the theme it was drawn in, and a deck
+read back names it — and a **slide's background**, which comes back as the
+frontmatter that names it. **The pictures do not travel
 either**: the reverse direction writes no media directory, so a picture in the
 deck is left out of the extracted Markdown altogether — no reference to a file,
 no alt text. The picture is still inside the `.pptx`; only the Markdown loses
@@ -425,7 +456,7 @@ clear is needed between runs.
 │       ├── OfficeInvalidArgumentException.php
 │       └── OfficeRuntimeException.php
 ├── skills/
-│   ├── office-documents/                     # the chain, the themes, the five round-trip losses
+│   ├── office-documents/                     # the chain, the themes, the six round-trip losses
 │   └── office-presentations/                 # the deck dialect, the themes, the deck's limits
 ├── tests/
 │   ├── Pest.php                             # resets all three discovery registries in afterEach

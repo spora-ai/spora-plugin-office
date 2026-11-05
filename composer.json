@@ -11,8 +11,8 @@
         "ext-mbstring": "*",
         "ext-gd": "*",
         "spora-ai/spora-core": ">=0.30.0 <2.0.0",
-        "markdown-office/markdown-word": "^0.3",
-        "markdown-office/markdown-presentation": "^0.3",
+        "markdown-office/markdown-word": "^0.4",
+        "markdown-office/markdown-presentation": "^0.4",
         "symfony/yaml": "^7.4 || ^8.1"
     },
     "require-dev": {

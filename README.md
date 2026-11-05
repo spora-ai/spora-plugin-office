@@ -113,10 +113,13 @@ cweagans/composer-patches contains a Composer plugin which is blocked by your al
 ```
 
 With the entry set to `false`, or with `--no-plugins`, the install succeeds and
-every render fails — the slides half with
-`MarkdownPresentation\Exception\UnpatchedDependency` and the Word half with the
-same refusal under its own namespace — which names the plugin and says what to
-do, so the failure is diagnosable rather than mysterious.
+the two halves then fail differently. The slides half fails loudly, with
+`MarkdownPresentation\Exception\UnpatchedDependency` — its message names the
+plugin and says what to do, so the failure is diagnosable rather than
+mysterious. The Word half raises nothing about the missing patch: the render
+completes and writes a `.docx` that is not valid Office Open XML, and it stays
+invalid until PHPWord releases the fixes the patch carries. The `.odt` and the
+`.rtf` come out of other writers, which the patch does not touch.
 
 The patches carry PHPPresentation 1.2.0 and PHPWord 1.4.0 up to upstream's
 master, so that the packages write the elements in the order ECMA-376 names

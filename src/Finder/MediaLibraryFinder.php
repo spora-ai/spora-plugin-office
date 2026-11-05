@@ -31,13 +31,9 @@ use Symfony\Component\Yaml\Yaml;
  * one that answers bytes is trusted, and the library stages what it cannot be
  * handed as bytes into a file of its own.
  *
- * **Each half is served a projection of the manifest.** The two halves read
- * the same `theme.yml` and each refuses a key that is not its own: the Word
- * half reads `styles:` and the slides half reads `dark:`, `colors:`, `fonts:`,
- * `style:` and `layouts:`. A folder therefore holds one manifest that may
- * carry a look for either half, and each half is handed the keys it reads
- * ({@see LibraryHalf::themeKeys()}). That projection is the one lossy step in
- * the whole arrangement, and it is here, in one place, on purpose.
+ * **Each half is served a projection of the manifest** ({@see LibraryHalf}).
+ * That projection is the one lossy step in the whole arrangement, and it is
+ * here, in one place, on purpose.
  */
 final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
 {
@@ -114,8 +110,7 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
      * A file of a theme, named `<theme>/<file>`.
      *
      * The theme part is a folder name and the file part is a name inside it.
-     * A name that is not that shape names nothing: the library composes the
-     * name from the theme a document asked for, and a document that asked for
+     * A name that is not that shape names nothing: a document that asked for
      * `../other-tenant` must not reach another tenant's theme.
      */
     private function themeFile(string $name): ?string
@@ -169,9 +164,8 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
      * The bytes of a theme file as the half that asked may read them.
      *
      * Only the manifest is projected; every other file of a theme is served as
-     * it is. Split out from {@see self::splitThemeFile()}: which bytes are
-     * served is a decision of its own, and folding it into the lookup makes
-     * both harder to read.
+     * it is. Which bytes are served is a decision of its own, so it is not
+     * folded into the lookup.
      */
     private function servedBytes(string $file, string $bytes): string
     {
@@ -197,11 +191,10 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
     /**
      * The manifest as the half that asked may read it.
      *
-     * A key the other half reads is dropped, so that one folder may carry a
-     * look for either. A key *neither* half reads is kept, so that the library
-     * refuses it with a sentence naming the whole vocabulary: a manifest that
-     * is quietly rewritten is a theme that looks like the one its author wrote
-     * and is not.
+     * A key the other half reads is dropped; a key *neither* half reads is
+     * kept, so that the library refuses it with a sentence naming the whole
+     * vocabulary. A manifest that is quietly rewritten is a theme that looks
+     * like the one its author wrote and is not.
      *
      * Null rather than a guess: a manifest that is not a mapping, or is not
      * YAML at all, is the library's to complain about, and it complains with
@@ -216,8 +209,6 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
             $parsed = null;
         }
 
-        // A manifest that is not a mapping, and one that is not YAML at all,
-        // are the same case here: the library's to complain about.
         if (!is_array($parsed) || ($parsed !== [] && array_is_list($parsed))) {
             return null;
         }

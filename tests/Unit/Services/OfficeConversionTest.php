@@ -155,9 +155,8 @@ it('writes a label holding markdown out as its own source text', function () {
     );
 
     // A label is plain text, so a complete Markdown construct in one is not
-    // honoured — and a form the library cannot draw is drawn as its own
-    // source text rather than dropped. The reader escapes the brackets of a
-    // form it finds as text.
+    // honoured: the form is drawn as its own source text rather than dropped,
+    // and the reader escapes the brackets of a form it finds as text.
     expect(officeText($conversion->markdownToDocx("---\ntheme: corporate\n---\n\nA :brand[**Bakery**] here.\n"), 'docx'))
         ->toContain(':brand[**Bakery**]')
         ->and($markdown)->toContain(':brand\[\*\*Bakery\*\*\]');
@@ -245,11 +244,9 @@ function officeText(string $bytes, string $format): string
 /**
  * The format table in the skill: which format carries which directive.
  *
- * A directive a format cannot carry is drawn as its own source text, so the
- * text is how a missing one is seen. The marker is the directive's name and
- * not the form that was written: the source form is rewritten as it is drawn
- * — the empty braces of an attribute list are not written, and a bare value
- * is re-quoted.
+ * The marker is the directive's name and not the form that was written: the
+ * source form is rewritten as it is drawn — the empty braces of an attribute
+ * list are not written, and a bare value is re-quoted.
  */
 it('carries only what the format can hold', function (string $written, string $marker, array $formats) {
     $conversion = new OfficeConversion(new FakeMediaLibrary());
@@ -388,13 +385,10 @@ it('pops its error handler once the render is done', function () {
         $conversion->markdownToDocx(DocxFixtures::SAMPLE_MARKDOWN);
 
         // Stack depth, not whether a notice arrived. The earlier version of
-        // this test counted PHPWord's own deprecations and asserted they
-        // reached the recorder — which only works on PHP 8.5, where
-        // `Style::getStyle()` passes null to an array offset. On 8.4 the
-        // library is silent, the recorder sees nothing, and a correct
-        // suppressor reads as a leak. The leak this guards against has
-        // nothing to do with which PHP raises what: it is a frame left on
-        // the stack, so that is what is measured.
+        // this test counted PHPWord's own deprecations, which only arrive on
+        // PHP 8.5 — on 8.4 the library is silent and a correct suppressor
+        // reads as a leak. The leak guarded against is a frame left on the
+        // stack, so that is what is measured.
         expect(ErrorHandlerStack::leakedFramesAbove($sentinel))->toBe(0);
     } finally {
         restore_error_handler();
@@ -444,10 +438,8 @@ it('draws a document in the theme the media library holds', function () {
 it('draws a document in a theme whose manifest carries the slides half\'s keys', function () {
     $library = new FakeMediaLibrary();
 
-    // One manifest for both halves: a theme file may carry a look for either
-    // half, and each half is served the keys it reads. The Word loader
-    // refuses a key it does not know, so the projection is what makes this
-    // one folder serve both.
+    // The Word loader refuses a key it does not know, so the projection is
+    // what lets one folder serve both halves.
     $library->withTheme(7, 'house', [
         'theme.yml' => "name: House\ndescription: The house theme\nauthor: Ops\n"
             . "dark: true\ncolors:\n  accent1: \"#4C1D95\"\nfonts:\n  heading: Inter\n"
@@ -469,9 +461,8 @@ it('draws a document in a theme whose manifest carries the slides half\'s keys',
 it('draws a document and a deck in one theme folder', function () {
     $library = new FakeMediaLibrary();
 
-    // One folder, one manifest, one theme: the look of a document and the look
-    // of a deck are two sections of the same file, and each half reads its
-    // own.
+    // The look of a document and the look of a deck are two sections of one
+    // file, and each half reads its own.
     $library->withTheme(7, 'house', [
         'theme.yml' => "name: House\nauthor: House Style Desk\n"
             . "colors:\n  accent1: \"#4C1D95\"\n"
@@ -488,7 +479,7 @@ it('draws a document and a deck in one theme folder', function () {
     $deck = $conversion->markdownToPresentation("---\ntheme: house\n---\n\n# Quarterly report\n", 7);
 
     // The document is drawn in the word half's look and the deck in the
-    // slides half's, and neither half refuses the other's section.
+    // slides half's.
     expect($styles)->toContain('1A2B3C')
         ->and(substr($deck, 0, 2))->toBe('PK')
         ->and(DocxFixtures::partOf($deck, 'docProps/core.xml'))->toContain('House Style Desk');
@@ -512,8 +503,8 @@ it('draws a document in the theme the caller named, not the one in its frontmatt
         DocxFixtures::STYLES_PART,
     );
 
-    // The caller's theme answers for the document: the frontmatter's is not
-    // read at all, so the document is drawn in the theme that was named in code.
+    // The frontmatter's theme is not read at all: the caller's answers for the
+    // document.
     expect($styles)->toContain('4C1D95')
         ->and($styles)->not->toContain('1A2B3C');
 });
@@ -573,7 +564,7 @@ it('reads the theme and the background of a deck back', function () {
     );
 
     // The deck records the theme it was drawn in, and a slide's background
-    // comes back as the frontmatter that names it.
+    // comes back as the frontmatter that names it, with the colour resolved.
     expect($markdown)->toContain('theme: "corporate-dark"')
         ->and($markdown)->toContain('background: "#89B4FA"');
 });

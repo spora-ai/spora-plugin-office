@@ -76,26 +76,25 @@ it('says media themes need the core that carries the folders', function () {
 it('says a theme is one file', function (string $name) {
     $skill = officeSkillText($name);
 
-    // A theme's look is a section of its own file, and the files of the old
-    // format are refused beside it — so a skill that described the old
-    // layout would send an operator to build a folder that no longer renders.
+    // The old format's files are refused beside a theme's look, so a skill
+    // describing the old layout would build a folder that no longer renders.
     expect($skill)->toContain('A theme is one file');
 })->with(['office-documents', 'office-presentations']);
 
 it('names the licence of the package underneath the library', function (string $name) {
     $skill = officeSkillText($name);
 
-    // Both halves write through a PHPOffice package, and both are LGPL-3.0.
-    // The plugin and the library are MIT; saying otherwise about the package
-    // underneath is a licence claim that is wrong.
+    // Both halves write through a PHPOffice package and both are LGPL-3.0; the
+    // plugin and the library are MIT, so a claim about the package underneath
+    // is the one that would be wrong.
     expect($skill)->toContain('LGPL-3.0');
 })->with(['office-documents', 'office-presentations']);
 
 it('lists the deck frontmatter keys the renderer reads', function () {
     $skill = officeSkillText('office-presentations');
 
-    // The list is closed, so a key that is missing from it is a key the agent
-    // is told not to write.
+    // The list is closed: a key missing from it is one the agent is told not
+    // to write.
     expect($skill)->toContain('`deck-settings`')
         ->and($skill)->toContain('`template-settings`')
         ->and($skill)->toContain('`background-gradient`')
@@ -103,10 +102,9 @@ it('lists the deck frontmatter keys the renderer reads', function () {
 });
 
 it('does not describe the quote loss as an indentation again', function () {
-    // A quote's own line breaks are joined into one line. That is the loss.
-    // "A quote written as plain indentation" was never it — four spaces of
-    // indentation is a code block in Markdown, and a blockquote comes back as
-    // a blockquote.
+    // A quote's own line breaks are joined into one line — that is the loss.
+    // "A quote written as plain indentation" was never it: four spaces of
+    // indentation is a code block in Markdown.
     expect(officeSkillText('office-documents'))->not->toContain('a quote written as plain indentation')
         ->and(officeReadmeText())->not->toContain('a quote written as plain indentation');
 });

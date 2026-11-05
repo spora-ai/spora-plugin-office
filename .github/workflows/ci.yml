@@ -187,11 +187,10 @@ jobs:
           composer config allow-plugins.pestphp/pest-plugin true
           composer config allow-plugins.spora-ai/installer true
           composer config allow-plugins.composer/installers true
-          # `markdown-presentation` patches PHPPresentation and `markdown-word`
-          # patches PHPWord through this Composer plugin, and `allow-plugins` is
-          # a root-project setting: the skeleton is the root here, so the
-          # skeleton has to allow it. Without the entry the install aborts with
-          # Composer's own message.
+          # `markdown-presentation` and `markdown-word` patch PHPPresentation
+          # and PHPWord through this Composer plugin, and `allow-plugins` is a
+          # root-project setting: the skeleton is the root here, so the
+          # skeleton has to allow it, or the install aborts.
           composer config allow-plugins.cweagans/composer-patches true
           composer config repositories.office path "$GITHUB_WORKSPACE"
 

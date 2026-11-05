@@ -70,9 +70,8 @@ it('serves the word half the look its own theme section carries', function () {
 
     $finder = new MediaLibraryFinder($library, 7, LibraryHalf::Word);
 
-    // The word half's own look is a section of the theme's file, and the
-    // slides half's is another — so the projection keeps the one this half
-    // reads and drops the one it does not.
+    // The Word half's look is a section of the file and the slides half's is
+    // another — the projection keeps the one this half reads.
     expect(Yaml::parse((string) $finder->read('corporate/theme.yml', 'theme')))->toBe([
         'name' => 'Corporate',
         'styles' => ['heading.1' => ['color' => '1A2B3C']],
@@ -111,7 +110,7 @@ it('keeps a key neither half reads, so the library refuses it', function () {
 
     // A manifest that is quietly rewritten is a theme that looks like the one
     // its author wrote and is not, so a key nobody claims is left for the
-    // library to refuse with a sentence that names the whole vocabulary.
+    // library to refuse with a sentence naming the whole vocabulary.
     expect(Yaml::parse((string) $finder->read('corporate/theme.yml', 'theme')))->toBe([
         'name' => 'Corporate',
         'colour' => '#4C1D95',

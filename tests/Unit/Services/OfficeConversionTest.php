@@ -158,7 +158,9 @@ it('writes a label holding markdown out as its own source text', function () {
     // honoured — and a form the library cannot draw is drawn as its own
     // source text rather than dropped. The reader escapes the brackets of a
     // form it finds as text.
-    expect($markdown)->toContain(':brand\[\*\*Bakery\*\*\]');
+    expect(officeText($conversion->markdownToDocx("---\ntheme: corporate\n---\n\nA :brand[**Bakery**] here.\n"), 'docx'))
+        ->toContain(':brand[**Bakery**]')
+        ->and($markdown)->toContain(':brand\[\*\*Bakery\*\*\]');
 });
 
 it('refuses a highlight in a word written in a style', function () {

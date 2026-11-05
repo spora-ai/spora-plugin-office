@@ -247,9 +247,9 @@ style: `:brand[Bakery]{color=FF0000}` is that word in red. The reserved name
 
 A label is plain text, so a complete Markdown construct inside one —
 `**text**`, `` `code` ``, `[text](url)` — is not honoured, and such a label is
-written out as its own source text: `:brand[**Bakery**]` comes back as
-`:brand[**Bakery**]`. A bare `*` or `_` is not Markdown, so `2 * 3` and
-`snake_case` are ordinary text, drawn in the style as it stands.
+written out as its own source text: the document carries `:brand[**Bakery**]`.
+A bare `*` or `_` is not Markdown, so `2 * 3` and `snake_case` are ordinary
+text, drawn in the style as it stands.
 
 A name the theme does not define is written out as its own source text too, so
 the sentence still reads as the sentence that was written.

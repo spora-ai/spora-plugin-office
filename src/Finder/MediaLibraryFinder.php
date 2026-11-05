@@ -213,9 +213,11 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
         try {
             $parsed = Yaml::parse($manifest);
         } catch (ParseException) {
-            return null;
+            $parsed = null;
         }
 
+        // A manifest that is not a mapping, and one that is not YAML at all,
+        // are the same case here: the library's to complain about.
         if (!is_array($parsed) || ($parsed !== [] && array_is_list($parsed))) {
             return null;
         }

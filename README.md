@@ -121,6 +121,23 @@ completes and writes a `.docx` that is not valid Office Open XML, and it stays
 invalid until PHPWord releases the fixes the patch carries. The `.odt` and the
 `.rtf` come out of other writers, which the patch does not touch.
 
+**A host that already runs the plugin has to rebuild its lock.** The patches
+that are applied are the ones in the host's own `patches.lock.json`, and that
+file is written once and read from then on — a dependency that brings a new
+patch does not rewrite it. A host whose lock predates the PHPWord patch
+installs PHPWord unpatched, and the Word half then writes a `.docx` that is
+not valid Office Open XML: the same silent failure as an install without the
+plugin, and with no message at all. After the upgrade, rebuild the lock from
+the packages that are installed now and apply it again:
+
+```bash
+composer patches-relock
+composer patches-repatch
+```
+
+A fresh install has no lock to be stale: it writes one from the packages' own
+declarations.
+
 The patches carry PHPPresentation 1.2.0 and PHPWord 1.4.0 up to upstream's
 master, so that the packages write the elements in the order ECMA-376 names
 them and the parts of a package are found and read as they should be. When

@@ -121,3 +121,14 @@ it('counts the round-trip losses the same way in the README and in the skill', f
         ->and($readme)->toContain('Six documented losses')
         ->and($skill)->toContain('Six losses');
 });
+
+it('tells the operator to rebuild the patch lock after an upgrade', function () {
+    $readme = officeReadmeText();
+
+    // The patches that are applied are the ones in the host's own lock, and a
+    // lock written before the PHPWord patch names no PHPWord patch: the Word
+    // half then writes a document that is not valid Office Open XML, and it
+    // says nothing while it does.
+    expect($readme)->toContain('composer patches-relock')
+        ->and($readme)->toContain('composer patches-repatch');
+});

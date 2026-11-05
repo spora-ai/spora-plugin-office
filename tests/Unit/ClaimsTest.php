@@ -108,3 +108,16 @@ it('does not describe the quote loss as an indentation again', function () {
     expect(officeSkillText('office-documents'))->not->toContain('a quote written as plain indentation')
         ->and(officeReadmeText())->not->toContain('a quote written as plain indentation');
 });
+
+it('counts the round-trip losses the same way in the README and in the skill', function () {
+    // The named-style loss joined the five, so there are six. A count that
+    // drifts between the two documents is a count a reader cannot rely on.
+    // The whitespace is folded, because a line break in the middle of the
+    // count is not a different count.
+    $readme = (string) preg_replace('/\s+/', ' ', officeReadmeText());
+    $skill  = (string) preg_replace('/\s+/', ' ', officeSkillText('office-documents'));
+
+    expect($readme)->not->toContain('five documented round-trip losses')
+        ->and($readme)->toContain('Six documented losses')
+        ->and($skill)->toContain('Six losses');
+});

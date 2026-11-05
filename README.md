@@ -151,7 +151,7 @@ a silently half-working plugin.
 ## What's in the box
 
 - 2 skills (`office-documents`, `office-presentations`) — the two-call chain,
-  the theme catalogue, the five documented round-trip losses, the image rules,
+  the theme catalogue, the six documented round-trip losses, the image rules,
   the approval and idempotency rules.
 - 5 media-archive registrations: four derivative producers and a MIME refiner
   (table below).

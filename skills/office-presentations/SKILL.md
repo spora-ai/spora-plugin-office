@@ -107,7 +107,10 @@ Say the number out loud.
 - `::note` … `::` is the speaker note, and it has to be the last thing on the
   slide.
 - `::column` on a line of its own moves everything below it into the next
-  column — the only way to have two columns.
+  column — the only way to have two columns, and there is no way back: the
+  marker means "the next column". **The slide's layout has to have more than
+  one column** — `two-column` or `image-text`; on a `content` slide it is a
+  failure that says so. The marker takes no argument.
 - `layout:` names the slide's shape: `title`, `content`, `two-column`,
   `section`, `blank`, `image-text`, `image-title`, `image-slide`. It is the
   deck's choice, and the theme decides what each of those looks like.
@@ -142,11 +145,11 @@ The ones that ship with the renderer, always available:
 
 | Theme | The look |
 | --- | --- |
-| `default` | the plain look — the safe answer |
-| `corporate-dark` | the house style on a dark page |
-| `minimal` | less decoration than the default |
-| `dense` | more on a slide: the look for a deck people read closely |
-| `pitch` | a pitch deck: big type, room to breathe |
+| `default` | Office's colours and type, for a deck that says nothing about its look |
+| `corporate-dark` | a dark corporate deck for technical briefings |
+| `minimal` | dense text-first decks, with as little on a slide as the text needs |
+| `dense` | small type and tight gaps, for a deck that has to hold a page |
+| `pitch` | black, gold and one blue, for a pitch or a proposal |
 
 And the ones the media library holds. A theme is a **folder** in the media
 library whose name is the theme's name; list them with
@@ -215,13 +218,25 @@ The built-in `corporate-dark` theme brings two of them — `brand` and `muted`:
 Resilience :brand[Bakery] is open.
 ```
 
-The eight attributes are `color`, `size`, `font`, `bold`, `italic`,
-`underline`, `strike` and `highlight`, and one may be written over a named
-style: `:brand[Bakery]{color=FF0000}` is that word in red. The reserved name
-`style` writes a word in a style of its own, with no theme behind it —
+The attributes are a closed set: `color`, `size`, `font`, `bold`, `italic`,
+`underline` and `strike`. One may be written over a named style:
+`:brand[Bakery]{color=FF0000}` is that word in red. The reserved name `style`
+writes a word in a style of its own, with no theme behind it —
 `:style[teal]{color=00B4D8}`.
 
-A label is plain text, so `:brand[**Bakery**]` does not honour the emphasis.
+**`highlight` is not one of them.** A highlight is a colour behind the word,
+and this half has no way to write one, so the attribute is refused by name
+rather than accepted and quietly dropped — in a deck and in a theme's
+`textStyles:` section alike. The Word half does draw a highlight; this one
+does not.
+
+A label is plain text, and **a label holding Markdown is refused** — a deck
+that renders `:brand[**Bakery**]` shows something the author did not write, so
+the render fails with a message naming the two ways out: give the style the
+weight in the theme's `textStyles:` section, or write the emphasis in the
+paragraph around it. A bare `*` or `_` is a character and not an intent, so
+`2 * 3` and `snake_case` are drawn as they are.
+
 A name the theme does not define is **refused**, with a message naming the
 alternative — write it in the theme's `textStyles:` section, or write the word
 in plain text.

@@ -10,6 +10,7 @@ use Spora\Plugins\Office\Tests\Support\DocxFixtures;
 use Spora\Plugins\Office\Tests\Support\ErrorHandlerStack;
 use Spora\Plugins\Office\Tests\Support\ErrorRecorder;
 use Spora\Plugins\Office\Tests\Support\FakeMediaLibrary;
+use Spora\Plugins\Office\Tests\Support\FixtureException;
 use Spora\Plugins\Office\Tests\Support\PictureFixture;
 
 /**
@@ -144,6 +145,149 @@ it('reads a word written in a named style back as the word', function () {
     // The style is written as direct formatting, and the reader reads the
     // weight of it and no colour: the word is there, the style is not.
     expect($markdown)->toBe('Resilience **Bakery** is open.');
+});
+
+it('writes a label holding markdown out as its own source text', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = $conversion->officeToMarkdown(
+        $conversion->markdownToDocx("---\ntheme: corporate\n---\n\nA :brand[**Bakery**] here.\n"),
+    );
+
+    // A label is plain text, so a complete Markdown construct in one is not
+    // honoured — and a form the library cannot draw is drawn as its own
+    // source text rather than dropped. The reader escapes the brackets of a
+    // form it finds as text.
+    expect($markdown)->toContain(':brand\[\*\*Bakery\*\*\]');
+});
+
+it('refuses a highlight in a word written in a style', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $caught = null;
+
+    try {
+        $conversion->markdownToPresentation(
+            "---\ntheme: corporate-dark\n---\n\nA :brand[Bakery]{highlight=FF0000} here.\n",
+        );
+    } catch (OfficeDocumentException $e) {
+        $caught = $e;
+    }
+
+    // The slides half has no way to write a highlight, so the attribute is
+    // refused by name rather than accepted and quietly dropped.
+    expect($caught)->toBeInstanceOf(OfficeDocumentException::class)
+        ->and($caught->getMessage())->toContain('highlight');
+});
+
+it('refuses a markdown construct in the label of a word written in a style', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $caught = null;
+
+    try {
+        $conversion->markdownToPresentation(
+            "---\ntheme: corporate-dark\n---\n\nA :brand[**Bakery**] here.\n",
+        );
+    } catch (OfficeDocumentException $e) {
+        $caught = $e;
+    }
+
+    // A deck that renders this shows something the author did not write, so
+    // the render stops and says the two ways out.
+    expect($caught)->toBeInstanceOf(OfficeDocumentException::class)
+        ->and($caught->getMessage())->toContain('plain text');
+});
+
+/**
+ * The readable text of a rendered document, for a format that is a package.
+ *
+ * A directive the format cannot carry is drawn as its own source text, so
+ * the text of the package is where a missing one is seen.
+ */
+function officeText(string $bytes, string $format): string
+{
+    if ($format === 'rtf') {
+        return $bytes;
+    }
+
+    $path = tempnam(sys_get_temp_dir(), 'spora-office-text-');
+
+    if ($path === false) {
+        throw new FixtureException('Could not stage a document file.');
+    }
+
+    try {
+        file_put_contents($path, $bytes);
+
+        $archive = new ZipArchive();
+
+        if ($archive->open($path) !== true) {
+            throw new FixtureException('Could not open the document package.');
+        }
+
+        $text = '';
+
+        for ($index = 0; $index < $archive->numFiles; $index++) {
+            $text .= (string) $archive->getFromIndex($index);
+        }
+
+        $archive->close();
+
+        return $text;
+    } finally {
+        @unlink($path);
+    }
+}
+
+/**
+ * The format table in the skill: which format carries which directive.
+ *
+ * A directive a format cannot carry is drawn as its own source text, so the
+ * text is how a missing one is seen. The marker is the directive's name and
+ * not the form that was written: the source form is rewritten as it is drawn
+ * — the empty braces of an attribute list are not written, and a bare value
+ * is re-quoted.
+ */
+it('carries only what the format can hold', function (string $written, string $marker, array $formats) {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = "# Report\n\n{$written}\n";
+
+    foreach (['docx' => 'markdownToDocx', 'odt' => 'markdownToOdt', 'rtf' => 'markdownToRtf'] as $format => $method) {
+        $bytes = $conversion->{$method}($markdown);
+
+        $carried = in_array($format, $formats, true);
+
+        // The directive is absent from the text when the format draws it, and
+        // present in it when the format cannot carry it.
+        expect(str_contains(officeText($bytes, $format), $marker))
+            ->toBe(!$carried, sprintf(
+                '"%s" in a %s is %s',
+                $written,
+                $format,
+                $carried ? 'drawn' : 'drawn as its own source text',
+            ));
+    }
+})->with([
+    'a page break is carried by all three' => ['::pagebreak', '::pagebreak', ['docx', 'odt', 'rtf']],
+    'a caption is carried by all three' => ['::caption[Figure 1]{}', '::caption', ['docx', 'odt', 'rtf']],
+    'a section break is carried by all three' => ['::section{columns=2}', '::section', ['docx', 'odt', 'rtf']],
+    'a table of contents is a docx alone' => ['::toc', '::toc', ['docx']],
+    'a footnote is a docx alone' => [':footnote[Body.]', ':footnote[Body.]', ['docx']],
+    'a text box is a docx alone' => ['::textbox[Hello]{left=1 top=1 width=5 height=3}', '::textbox', ['docx']],
+    'a shape is a docx alone' => ['::shape{type=rect fill=FF0000}', '::shape', ['docx']],
+    'a form field is a docx alone' => ['::field{name=who type=textinput}', '::field', ['docx']],
+]);
+
+it('carries the columns of a section in a docx and an odt, and not in an rtf', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = "# Report\n\n::section{columns=2}\n";
+
+    expect(officeText($conversion->markdownToDocx($markdown), 'docx'))->toContain('w:num="2"')
+        ->and(officeText($conversion->markdownToOdt($markdown), 'odt'))->toContain('fo:column-count="2"')
+        ->and(officeText($conversion->markdownToRtf($markdown), 'rtf'))->not->toContain('\cols');
 });
 
 it('maps the package exception tree onto OfficeDocumentException', function () {

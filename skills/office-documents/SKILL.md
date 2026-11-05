@@ -150,9 +150,10 @@ column; `docx`, `odt` and `rtf` use four of them.
 
 ## Themes
 
-A theme is the look a document is drawn in: its colours, its type scale, its
-heading styles. A document names one in its **frontmatter**, at the very top of
-the Markdown:
+A theme is the look a document is drawn in: the slots its headings, its
+paragraphs, its quotes, its code and its tables are drawn from, and the named
+styles a word may be written in. A document names one in its **frontmatter**,
+at the very top of the Markdown:
 
 ```markdown
 ---
@@ -168,10 +169,10 @@ The ones that ship with the renderer, always available:
 
 | Theme | The look |
 | --- | --- |
-| `default` | the plain look — the safe answer |
-| `minimal` | less decoration than the default |
-| `corporate` | the house style, for a formal document |
-| `report` | a report: bigger headings, room for tables |
+| `default` | the built-in look — blue headings, code on a grey panel |
+| `minimal` | monochrome and quiet — headings in the ink, code on the page |
+| `corporate` | serif headings in navy, wide spacing, ruled tables |
+| `report` | serif body on an open leading, for something read to the end |
 
 And the ones the media library holds. A theme is a **folder** in the media
 library whose name is the theme's name; list them with
@@ -244,9 +245,49 @@ style: `:brand[Bakery]{color=FF0000}` is that word in red. The reserved name
 `style` writes a word in a style of its own, with no theme behind it —
 `:style[teal]{color=00B4D8}`.
 
-A label is plain text, so `:brand[**Bakery**]` does not honour the emphasis.
-A name the theme does not define is written out as its own source text, so the
-sentence still reads as the sentence that was written.
+A label is plain text, so a complete Markdown construct inside one —
+`**text**`, `` `code` ``, `[text](url)` — is not honoured, and such a label is
+written out as its own source text: `:brand[**Bakery**]` comes back as
+`:brand[**Bakery**]`. A bare `*` or `_` is not Markdown, so `2 * 3` and
+`snake_case` are ordinary text, drawn in the style as it stands.
+
+A name the theme does not define is written out as its own source text too, so
+the sentence still reads as the sentence that was written.
+
+## Objects in a document
+
+A document is more than paragraphs, and these are the names that place the rest
+of it. The last column is the one that matters when choosing a format:
+
+| Directive | Carries | Carried by |
+| --- | --- | --- |
+| `::image{src=… width=… height=… align=…}` | a picture | `.docx`, `.odt`, `.rtf` |
+| `::caption[Figure 1]{}` | a caption | `.docx`, `.odt`, `.rtf` |
+| `::pagebreak` | a page break | `.docx`, `.odt`, `.rtf` |
+| `::section{columns=2}` | a section break, and its columns | `.docx`, `.odt` (the break alone in `.rtf`) |
+| `::toc` | a table of contents | `.docx` |
+| `:footnote[…]` | a footnote | `.docx` |
+| `::textbox[…]{width=… height=…}` | a box with text in it | `.docx` |
+| `::shape{type=rect …}` | a shape | `.docx` |
+| `::field{name=…}` | a form field | `.docx` |
+
+**A format that cannot carry one is given the characters the author wrote**, and
+the loss is reported — so the directive is safe to write, and the reader of
+the `.rtf` sees it as text rather than not at all.
+
+- **A picture is measured in centimetres**, and a size that is asked for is the
+  size the picture gets. The label is the alternative text, and a file that is
+  not there falls back to it.
+- **A caption is not numbered.** Word has no field that numbers a figure, so
+  the number is in the caption, where a reader can see it and an author can
+  change it.
+- **A footnote's body is text, never Markdown**, and the mark needs a space in
+  front of it — `plan :footnote[The figure excludes two hires.]`, not
+  `plan:footnote[…]`. A mark on a line of its own is a paragraph holding a
+  mark, not an annotation of the sentence above it.
+- **A `::toc` is a real field.** Word builds it from the headings when the
+  document opens, so it is right however the document grows — and it says
+  "Press F9" until Word fills it in.
 
 ## What the round trip does not preserve
 
@@ -310,6 +351,11 @@ re-run step 2 rather than converting the DOCX forward.
 written into the document instead, and it comes back as the bare word `Chart`,
 not as an image reference. Any path that is not a readable local file degrades
 the same way, and in a server deployment nearly every path is not one.
+
+**`::image` is the same rule.** Its `src` is a file read from the machine the
+render runs on, not a URL, and the label is its alt text — so a file that is
+not there is written as the label, the way a Markdown image's alt text stands
+in for it.
 
 **A picture that is already inside the document comes back as an image
 reference to a file that was never written** — `![Chart](media/section_image1.png)`,

@@ -1,15 +1,27 @@
 {
-    "_hash": "21d2593382d9f5b42f8429f9ca99cab31d071ccf7779527114f31ea3f5022f12",
+    "_hash": "902173642bfeebec082ad28bae571ed2fb51d567592546209875efc1807a9c36",
     "patches": {
         "phpoffice/phppresentation": [
             {
                 "package": "phpoffice/phppresentation",
-                "description": "PHPPresentation 1.2.0 brought up to upstream's master, with the fixes that give a picture the path, the bytes and the name it was read from, and that find the folder of a part of a package with the slashes of the package",
-                "url": "https://raw.githubusercontent.com/markdown-office/PHPPresentation/9aa3f4624f1cab54fc5d275397c2fc59cf6f276d/patches/phpoffice-phppresentation-1.2.0-to-master.patch",
-                "sha256": "0b8f7c150f7ba5d12671fb9e211c9f1a4db549d7609239f49c0cea707a190551",
+                "description": "PHPPresentation 1.2.0 brought up to upstream's master, with the fixes that give a picture the path, the bytes and the name it was read from, that find the folder of a part of a package with the slashes of the package, that write a chart series in the order the schema names it, that write the data points of a series and the fill of the series itself, and that give a category axis a tick label skip of its own, and that write a gradient of more than two stops and a background painted with a gradient",
+                "url": "https://raw.githubusercontent.com/markdown-office/PHPPresentation/c6de3987c9019a1d60876b4aa1964f15e1abc132/patches/phpoffice-phppresentation-1.2.0-to-master.patch",
+                "sha256": "bb422f73ad2211948835cf9c5f1aed7ec993c3e4595d6e11bd9836e2f9a5f8d5",
                 "depth": 1,
                 "extra": {
                     "provenance": "dependency:phpoffice/phppresentation"
+                }
+            }
+        ],
+        "phpoffice/phpword": [
+            {
+                "package": "phpoffice/phpword",
+                "description": "PHPWord 1.4.0 writes the children of `w:rPr`, of `w:pPr`, of `w:tblPr`, of `w:sectPr` and of `w:style` in an order of its own, and writes a few elements the format does not allow there. The patch puts them where ECMA-376 names them. The version is held to the 1.4 line rather than the 1 series: the patch is against 1.4.0, and a later release of the line would carry a different writer.",
+                "url": "https://raw.githubusercontent.com/markdown-office/PHPWord/62f68049d287e5a52575f2ae694c2e76f4a2002a/patches/phpoffice-phpword-1.4.0-ooxml.patch",
+                "sha256": "193163898e7690b6eaf51086d415809616b7e25ec4090b58ce7966f66ae1203a",
+                "depth": 1,
+                "extra": {
+                    "provenance": "dependency:phpoffice/phpword"
                 }
             }
         ]

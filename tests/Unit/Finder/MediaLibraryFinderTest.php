@@ -47,13 +47,74 @@ it('serves the word half a projection of the slides manifest', function () {
     $projected = $finder->read('corporate/theme.yml', 'theme');
 
     // The word half refuses a key it does not know, so the manifest it is
-    // handed carries the three keys it reads and nothing else.
+    // handed carries the keys it reads and nothing else.
     expect($projected)->not->toBeNull()
         ->and(Yaml::parse((string) $projected))->toBe([
             'name' => 'Corporate',
             'description' => 'The house theme',
             'author' => 'Ops',
         ]);
+});
+
+it('serves the word half the look its own theme section carries', function () {
+    $manifest = "name: Corporate\n"
+        . "styles:\n"
+        . "  heading.1:\n"
+        . "    color: '1A2B3C'\n"
+        . "textStyles:\n"
+        . "  brand:\n"
+        . "    color: '0B5CAB'\n";
+
+    $library = new FakeMediaLibrary();
+    $library->withTheme(7, 'corporate', ['theme.yml' => $manifest]);
+
+    $finder = new MediaLibraryFinder($library, 7, LibraryHalf::Word);
+
+    // The Word half's look is a section of the file and the slides half's is
+    // another — the projection keeps the one this half reads.
+    expect(Yaml::parse((string) $finder->read('corporate/theme.yml', 'theme')))->toBe([
+        'name' => 'Corporate',
+        'styles' => ['heading.1' => ['color' => '1A2B3C']],
+        'textStyles' => ['brand' => ['color' => '0B5CAB']],
+    ]);
+});
+
+it('serves the slides half a projection without the word half\'s look', function () {
+    $manifest = "name: Corporate\n"
+        . "colors:\n"
+        . "  accent1: '#4C1D95'\n"
+        . "styles:\n"
+        . "  heading.1:\n"
+        . "    color: '1A2B3C'\n";
+
+    $library = new FakeMediaLibrary();
+    $library->withTheme(7, 'corporate', ['theme.yml' => $manifest]);
+
+    $finder = new MediaLibraryFinder($library, 7, LibraryHalf::Slides);
+
+    // The slides half refuses a key it does not know, and `styles:` names the
+    // word half's slots, which a deck of slides has no use for.
+    expect(Yaml::parse((string) $finder->read('corporate/theme.yml', 'theme')))->toBe([
+        'name' => 'Corporate',
+        'colors' => ['accent1' => '#4C1D95'],
+    ]);
+});
+
+it('keeps a key neither half reads, so the library refuses it', function () {
+    $manifest = "name: Corporate\ncolour: '#4C1D95'\n";
+
+    $library = new FakeMediaLibrary();
+    $library->withTheme(7, 'corporate', ['theme.yml' => $manifest]);
+
+    $finder = new MediaLibraryFinder($library, 7, LibraryHalf::Word);
+
+    // A manifest that is quietly rewritten is a theme that looks like the one
+    // its author wrote and is not, so a key nobody claims is left for the
+    // library to refuse with a sentence naming the whole vocabulary.
+    expect(Yaml::parse((string) $finder->read('corporate/theme.yml', 'theme')))->toBe([
+        'name' => 'Corporate',
+        'colour' => '#4C1D95',
+    ]);
 });
 
 it('serves the slides half the manifest as it is written', function () {

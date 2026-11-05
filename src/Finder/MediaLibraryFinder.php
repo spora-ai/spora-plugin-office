@@ -6,7 +6,6 @@ namespace Spora\Plugins\Office\Finder;
 
 use MarkdownPresentation\Files\FileFinder as PresentationFileFinder;
 use MarkdownWord\Files\FileFinder as WordFileFinder;
-use MarkdownWord\Theme\Theme;
 use MarkdownWord\Theme\ThemeLoader;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
@@ -32,11 +31,7 @@ use Symfony\Component\Yaml\Yaml;
  * one that answers bytes is trusted, and the library stages what it cannot be
  * handed as bytes into a file of its own.
  *
- * **The Word half is served a projection of the manifest.** The two halves read
- * the same `theme.yml` and disagree about what it may carry: the slides half
- * accepts colours, fonts and a type scale, and the Word half refuses a key it
- * does not know. A folder therefore holds the slides manifest — the superset —
- * and the Word half is handed the three keys it reads ({@see Theme::KEYS}).
+ * **Each half is served a projection of the manifest** ({@see LibraryHalf}).
  * That projection is the one lossy step in the whole arrangement, and it is
  * here, in one place, on purpose.
  */
@@ -115,8 +110,7 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
      * A file of a theme, named `<theme>/<file>`.
      *
      * The theme part is a folder name and the file part is a name inside it.
-     * A name that is not that shape names nothing: the library composes the
-     * name from the theme a document asked for, and a document that asked for
+     * A name that is not that shape names nothing: a document that asked for
      * `../other-tenant` must not reach another tenant's theme.
      */
     private function themeFile(string $name): ?string
@@ -169,14 +163,13 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
     /**
      * The bytes of a theme file as the half that asked may read them.
      *
-     * The Word half is served a projection of the manifest and every other
-     * file is served as it is. Split out for the same reason as
-     * {@see self::splitThemeFile()}: which bytes are served is a decision of
-     * its own, and folding it into the lookup makes both harder to read.
+     * Only the manifest is projected; every other file of a theme is served as
+     * it is. Which bytes are served is a decision of its own, so it is not
+     * folded into the lookup.
      */
     private function servedBytes(string $file, string $bytes): string
     {
-        if ($this->half !== LibraryHalf::Word || $file !== ThemeLoader::THEME_FILE) {
+        if ($file !== ThemeLoader::THEME_FILE) {
             return $bytes;
         }
 
@@ -196,8 +189,12 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
     }
 
     /**
-     * The manifest the Word half may read, or null when the manifest is not
-     * one the slides half would have written either.
+     * The manifest as the half that asked may read it.
+     *
+     * A key the other half reads is dropped; a key *neither* half reads is
+     * kept, so that the library refuses it with a sentence naming the whole
+     * vocabulary. A manifest that is quietly rewritten is a theme that looks
+     * like the one its author wrote and is not.
      *
      * Null rather than a guess: a manifest that is not a mapping, or is not
      * YAML at all, is the library's to complain about, and it complains with
@@ -209,14 +206,31 @@ final class MediaLibraryFinder implements WordFileFinder, PresentationFileFinder
         try {
             $parsed = Yaml::parse($manifest);
         } catch (ParseException) {
-            return null;
+            $parsed = null;
         }
 
         if (!is_array($parsed) || ($parsed !== [] && array_is_list($parsed))) {
             return null;
         }
 
-        $projected = array_intersect_key($parsed, array_flip(Theme::KEYS));
+        $mine   = array_flip($this->half->themeKeys());
+        $either = array_flip([...LibraryHalf::Word->themeKeys(), ...LibraryHalf::Slides->themeKeys()]);
+
+        $projected = [];
+
+        foreach ($parsed as $key => $value) {
+            $key = (string) $key;
+
+            if (isset($mine[$key]) || !isset($either[$key])) {
+                $projected[$key] = $value;
+            }
+        }
+
+        // Nothing of the other half's is in here, so the manifest is served as
+        // it was written: re-dumping it would change bytes for no reason.
+        if (count($projected) === count($parsed)) {
+            return $manifest;
+        }
 
         return Yaml::dump($projected);
     }

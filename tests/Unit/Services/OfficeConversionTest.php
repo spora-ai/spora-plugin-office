@@ -10,6 +10,7 @@ use Spora\Plugins\Office\Tests\Support\DocxFixtures;
 use Spora\Plugins\Office\Tests\Support\ErrorHandlerStack;
 use Spora\Plugins\Office\Tests\Support\ErrorRecorder;
 use Spora\Plugins\Office\Tests\Support\FakeMediaLibrary;
+use Spora\Plugins\Office\Tests\Support\FixtureException;
 use Spora\Plugins\Office\Tests\Support\PictureFixture;
 
 /**
@@ -80,6 +81,212 @@ it('drops decoration when plain is requested', function () {
 
     expect($decorated)->toContain('IntenseQuote');
     expect($plain)->not->toContain('IntenseQuote');
+});
+
+/**
+ * The round trip's documented losses, one assertion each.
+ *
+ * The skill states these as a table, and a table nobody checks rots. Each
+ * case is a whole round trip, so the assertion is about what the library
+ * actually does rather than about the fixture.
+ */
+it('loses what the skill says a round trip loses', function (string $written, string $read) {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = $conversion->officeToMarkdown($conversion->markdownToDocx($written));
+
+    expect($markdown)->toBe($read);
+})->with([
+    'the header row returns bold' => [
+        "| A | B |\n| --- | --- |\n| 1 | 2 |\n",
+        "| **A** | **B** |\n| :-- | :-- |\n| 1 | 2 |",
+    ],
+    'a fenced block keeps the fence and loses the language' => [
+        "```php\n\$x = 1;\n\$y = 2;\n```\n",
+        "```\n\$x = 1;\n\$y = 2;\n```",
+    ],
+    'a fence of one line comes back as inline code' => [
+        "```\n\$x = 1;\n```\n",
+        '`$x = 1;`',
+    ],
+    "a quote's own line breaks are joined" => [
+        "> First line\n> Second line.\n",
+        '> First line Second line.',
+    ],
+    'the last line has no trailing newline' => [
+        "# Title\n",
+        '# Title',
+    ],
+    'adjacent fences merge into one block' => [
+        "```php\n\$x = 1;\n\$y = 2;\n```\n```\n\$z = 3;\n```\n",
+        "```\n\$x = 1;\n\$y = 2;\n\$z = 3;\n```",
+    ],
+]);
+
+it('loses the quote and the fence when plain is requested', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = $conversion->officeToMarkdown(
+        $conversion->markdownToDocx("> A quoted line.\n\n```php\n\$x = 1;\n\$y = 2;\n```\n", plain: true),
+    );
+
+    // The quote's style is what told the reader it was a quote, and the code
+    // font is what told the reader it was code: dropping both leaves prose.
+    expect($markdown)->toBe("A quoted line.\n\n\$x = 1;\n\n\$y = 2;");
+});
+
+it('reads a word written in a named style back as the word', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = $conversion->officeToMarkdown(
+        $conversion->markdownToDocx("---\ntheme: corporate\n---\n\nResilience :brand[Bakery] is open.\n"),
+    );
+
+    // The style is written as direct formatting, and the reader reads the
+    // weight of it and no colour: the word is there, the style is not.
+    expect($markdown)->toBe('Resilience **Bakery** is open.');
+});
+
+it('writes a label holding markdown out as its own source text', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = $conversion->officeToMarkdown(
+        $conversion->markdownToDocx("---\ntheme: corporate\n---\n\nA :brand[**Bakery**] here.\n"),
+    );
+
+    // A label is plain text, so a complete Markdown construct in one is not
+    // honoured: the form is drawn as its own source text rather than dropped,
+    // and the reader escapes the brackets of a form it finds as text.
+    expect(officeText($conversion->markdownToDocx("---\ntheme: corporate\n---\n\nA :brand[**Bakery**] here.\n"), 'docx'))
+        ->toContain(':brand[**Bakery**]')
+        ->and($markdown)->toContain(':brand\[\*\*Bakery\*\*\]');
+});
+
+it('refuses a highlight in a word written in a style', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $caught = null;
+
+    try {
+        $conversion->markdownToPresentation(
+            "---\ntheme: corporate-dark\n---\n\nA :brand[Bakery]{highlight=FF0000} here.\n",
+        );
+    } catch (OfficeDocumentException $e) {
+        $caught = $e;
+    }
+
+    // The slides half has no way to write a highlight, so the attribute is
+    // refused by name rather than accepted and quietly dropped.
+    expect($caught)->toBeInstanceOf(OfficeDocumentException::class)
+        ->and($caught->getMessage())->toContain('highlight');
+});
+
+it('refuses a markdown construct in the label of a word written in a style', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $caught = null;
+
+    try {
+        $conversion->markdownToPresentation(
+            "---\ntheme: corporate-dark\n---\n\nA :brand[**Bakery**] here.\n",
+        );
+    } catch (OfficeDocumentException $e) {
+        $caught = $e;
+    }
+
+    // A deck that renders this shows something the author did not write, so
+    // the render stops and says the two ways out.
+    expect($caught)->toBeInstanceOf(OfficeDocumentException::class)
+        ->and($caught->getMessage())->toContain('plain text');
+});
+
+/**
+ * The readable text of a rendered document, for a format that is a package.
+ *
+ * A directive the format cannot carry is drawn as its own source text, so
+ * the text of the package is where a missing one is seen.
+ */
+function officeText(string $bytes, string $format): string
+{
+    if ($format === 'rtf') {
+        return $bytes;
+    }
+
+    $path = tempnam(sys_get_temp_dir(), 'spora-office-text-');
+
+    if ($path === false) {
+        throw new FixtureException('Could not stage a document file.');
+    }
+
+    try {
+        file_put_contents($path, $bytes);
+
+        $archive = new ZipArchive();
+
+        if ($archive->open($path) !== true) {
+            throw new FixtureException('Could not open the document package.');
+        }
+
+        $text = '';
+
+        for ($index = 0; $index < $archive->numFiles; $index++) {
+            $text .= (string) $archive->getFromIndex($index);
+        }
+
+        $archive->close();
+
+        return $text;
+    } finally {
+        @unlink($path);
+    }
+}
+
+/**
+ * The format table in the skill: which format carries which directive.
+ *
+ * The marker is the directive's name and not the form that was written: the
+ * source form is rewritten as it is drawn — the empty braces of an attribute
+ * list are not written, and a bare value is re-quoted.
+ */
+it('carries only what the format can hold', function (string $written, string $marker, array $formats) {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = "# Report\n\n{$written}\n";
+
+    foreach (['docx' => 'markdownToDocx', 'odt' => 'markdownToOdt', 'rtf' => 'markdownToRtf'] as $format => $method) {
+        $bytes = $conversion->{$method}($markdown);
+
+        $carried = in_array($format, $formats, true);
+
+        // The directive is absent from the text when the format draws it, and
+        // present in it when the format cannot carry it.
+        expect(str_contains(officeText($bytes, $format), $marker))
+            ->toBe(!$carried, sprintf(
+                '"%s" in a %s is %s',
+                $written,
+                $format,
+                $carried ? 'drawn' : 'drawn as its own source text',
+            ));
+    }
+})->with([
+    'a page break is carried by all three' => ['::pagebreak', '::pagebreak', ['docx', 'odt', 'rtf']],
+    'a caption is carried by all three' => ['::caption[Figure 1]{}', '::caption', ['docx', 'odt', 'rtf']],
+    'a section break is carried by all three' => ['::section{columns=2}', '::section', ['docx', 'odt', 'rtf']],
+    'a table of contents is a docx alone' => ['::toc', '::toc', ['docx']],
+    'a footnote is a docx alone' => [':footnote[Body.]', ':footnote[Body.]', ['docx']],
+    'a text box is a docx alone' => ['::textbox[Hello]{left=1 top=1 width=5 height=3}', '::textbox', ['docx']],
+    'a shape is a docx alone' => ['::shape{type=rect fill=FF0000}', '::shape', ['docx']],
+    'a form field is a docx alone' => ['::field{name=who type=textinput}', '::field', ['docx']],
+]);
+
+it('carries the columns of a section in a docx and an odt, and not in an rtf', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = "# Report\n\n::section{columns=2}\n";
+
+    expect(officeText($conversion->markdownToDocx($markdown), 'docx'))->toContain('w:num="2"')
+        ->and(officeText($conversion->markdownToOdt($markdown), 'odt'))->toContain('fo:column-count="2"')
+        ->and(officeText($conversion->markdownToRtf($markdown), 'rtf'))->not->toContain('\cols');
 });
 
 it('maps the package exception tree onto OfficeDocumentException', function () {
@@ -178,13 +385,10 @@ it('pops its error handler once the render is done', function () {
         $conversion->markdownToDocx(DocxFixtures::SAMPLE_MARKDOWN);
 
         // Stack depth, not whether a notice arrived. The earlier version of
-        // this test counted PHPWord's own deprecations and asserted they
-        // reached the recorder — which only works on PHP 8.5, where
-        // `Style::getStyle()` passes null to an array offset. On 8.4 the
-        // library is silent, the recorder sees nothing, and a correct
-        // suppressor reads as a leak. The leak this guards against has
-        // nothing to do with which PHP raises what: it is a frame left on
-        // the stack, so that is what is measured.
+        // this test counted PHPWord's own deprecations, which only arrive on
+        // PHP 8.5 — on 8.4 the library is silent and a correct suppressor
+        // reads as a leak. The leak guarded against is a frame left on the
+        // stack, so that is what is measured.
         expect(ErrorHandlerStack::leakedFramesAbove($sentinel))->toBe(0);
     } finally {
         restore_error_handler();
@@ -215,8 +419,7 @@ it('pops its error handler when the conversion throws', function () {
 it('draws a document in the theme the media library holds', function () {
     $library = new FakeMediaLibrary();
     $library->withTheme(7, 'house', [
-        'theme.yml' => "name: House\n",
-        'styles.yml' => "heading.1:\n  color: \"1A2B3C\"\n",
+        'theme.yml' => "name: House\nstyles:\n  heading.1:\n    color: \"1A2B3C\"\n",
     ]);
 
     $conversion = new OfficeConversion($library);
@@ -235,13 +438,12 @@ it('draws a document in the theme the media library holds', function () {
 it('draws a document in a theme whose manifest carries the slides half\'s keys', function () {
     $library = new FakeMediaLibrary();
 
-    // One manifest for both halves: the slides superset. The Word loader
-    // refuses a key it does not know, so the projection is what makes this
-    // one folder serve both.
+    // The Word loader refuses a key it does not know, so the projection is
+    // what lets one folder serve both halves.
     $library->withTheme(7, 'house', [
         'theme.yml' => "name: House\ndescription: The house theme\nauthor: Ops\n"
-            . "dark: true\ncolors:\n  accent1: \"#4C1D95\"\nfonts:\n  heading: Inter\n",
-        'styles.yml' => "heading.1:\n  color: \"1A2B3C\"\n",
+            . "dark: true\ncolors:\n  accent1: \"#4C1D95\"\nfonts:\n  heading: Inter\n"
+            . "styles:\n  heading.1:\n    color: \"1A2B3C\"\n",
     ]);
 
     $conversion = new OfficeConversion($library);
@@ -256,15 +458,40 @@ it('draws a document in a theme whose manifest carries the slides half\'s keys',
     expect($styles)->toContain('1A2B3C');
 });
 
+it('draws a document and a deck in one theme folder', function () {
+    $library = new FakeMediaLibrary();
+
+    // The look of a document and the look of a deck are two sections of one
+    // file, and each half reads its own.
+    $library->withTheme(7, 'house', [
+        'theme.yml' => "name: House\nauthor: House Style Desk\n"
+            . "colors:\n  accent1: \"#4C1D95\"\n"
+            . "styles:\n  heading.1:\n    color: \"1A2B3C\"\n",
+    ]);
+
+    $conversion = new OfficeConversion($library);
+
+    $styles = DocxFixtures::partOf(
+        $conversion->markdownToDocx("---\ntheme: house\n---\n\n# Quarterly report\n", 7),
+        DocxFixtures::STYLES_PART,
+    );
+
+    $deck = $conversion->markdownToPresentation("---\ntheme: house\n---\n\n# Quarterly report\n", 7);
+
+    // The document is drawn in the word half's look and the deck in the
+    // slides half's.
+    expect($styles)->toContain('1A2B3C')
+        ->and(substr($deck, 0, 2))->toBe('PK')
+        ->and(DocxFixtures::partOf($deck, 'docProps/core.xml'))->toContain('House Style Desk');
+});
+
 it('draws a document in the theme the caller named, not the one in its frontmatter', function () {
     $library = new FakeMediaLibrary();
     $library->withTheme(7, 'house', [
-        'theme.yml' => "name: House\n",
-        'styles.yml' => "heading.1:\n  color: \"1A2B3C\"\n",
+        'theme.yml' => "name: House\nstyles:\n  heading.1:\n    color: \"1A2B3C\"\n",
     ]);
     $library->withTheme(7, 'corporate', [
-        'theme.yml' => "name: Corporate\n",
-        'styles.yml' => "heading.1:\n  color: \"4C1D95\"\n",
+        'theme.yml' => "name: Corporate\nstyles:\n  heading.1:\n    color: \"4C1D95\"\n",
     ]);
 
     $conversion = new OfficeConversion($library);
@@ -276,8 +503,8 @@ it('draws a document in the theme the caller named, not the one in its frontmatt
         DocxFixtures::STYLES_PART,
     );
 
-    // The caller's theme answers for the document: the frontmatter's is not
-    // read at all, so the document is drawn in the theme that was named in code.
+    // The frontmatter's theme is not read at all: the caller's answers for the
+    // document.
     expect($styles)->toContain('4C1D95')
         ->and($styles)->not->toContain('1A2B3C');
 });
@@ -325,6 +552,113 @@ it('reads a rendered deck back as the markdown it was written from', function ()
         ->and($markdown)->toContain('Some words.')
         ->and($markdown)->toContain('Second slide');
 });
+
+it('reads the theme and the background of a deck back', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $markdown = $conversion->presentationToMarkdown(
+        $conversion->markdownToPresentation(
+            "---\ntitle: A themed deck\ntheme: corporate-dark\n---\n\n"
+            . "---\nlayout: blank\nbackground: accent1\n---\n\n# One\n",
+        ),
+    );
+
+    // The deck records the theme it was drawn in, and a slide's background
+    // comes back as the frontmatter that names it, with the colour resolved.
+    expect($markdown)->toContain('theme: "corporate-dark"')
+        ->and($markdown)->toContain('background: "#89B4FA"');
+});
+
+it('takes every frontmatter key the skill lists for a deck', function (string $frontmatter, string $body = "# One\n") {
+    $library = new FakeMediaLibrary();
+    $library->withAsset(7, 'templates.md', "---\ntemplate: page\n---\n\n::slide-number{left=92% top=90% width=6% height=6% color=subtle font-size=10}\n");
+
+    $conversion = new OfficeConversion($library);
+
+    $pptx = $conversion->markdownToPresentation("---\n{$frontmatter}\n---\n\n{$body}", 7);
+
+    expect(substr($pptx, 0, 2))->toBe('PK');
+})->with([
+    'title' => ["title: A deck"],
+    'name' => ['name: a-deck'],
+    'level' => ['level: 2'],
+    'layout' => ['layout: blank'],
+    'author' => ['author: Ops'],
+    'description' => ['description: A deck about a deck'],
+    'theme' => ['theme: pitch'],
+    'template' => ["template: brand\ntemplate-settings:\n  background: accent1", "\n::rectangle{left=0 top=0 width=100% height=0.7% fill=accent1}\n"],
+    'templates-file' => ['templates-file: templates.md'],
+    'background' => ['background: accent1'],
+    'background-gradient' => ['background-gradient: "accent1,lt2"'],
+    'background-angle' => ["background-gradient: \"accent1,lt2\"\nbackground-angle: 45"],
+    'background-radial' => ["background-gradient: \"accent1,lt2\"\nbackground-radial: true"],
+    'theme-variables' => ["theme-variables:\n  colors:\n    accent1: \"#7AA2F7\""],
+    'deck-settings' => ["deck-settings:\n  background: \"#101014\""],
+]);
+
+it('refuses a frontmatter key the skill does not list for a deck', function () {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $caught = null;
+
+    try {
+        $conversion->markdownToPresentation("---\ntransition: fade\n---\n\n# One\n");
+    } catch (OfficeDocumentException $e) {
+        $caught = $e;
+    }
+
+    expect($caught)->toBeInstanceOf(OfficeDocumentException::class)
+        ->and($caught->getMessage())->toContain('transition');
+});
+
+it('draws the shapes the skill shows', function (string $body) {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $pptx = $conversion->markdownToPresentation("---\nlayout: blank\n---\n\n{$body}");
+
+    expect(substr($pptx, 0, 2))->toBe('PK');
+})->with([
+    'a placed rectangle, a circle and a content box' => <<<'MARKDOWN'
+        ::rectangle{left=0 top=0 width=100% height=100% fill=panel layer=back}
+
+        ::circle{left=8% top=10% width=6% height=6% fill=accent1}
+
+        :::content{left=20% top=40% width=60% height=40% font-size=20}
+        ## Q3 review
+        - 4,182 signups
+        :::
+        MARKDOWN,
+    'a gradient and a radial one' => <<<'MARKDOWN'
+        ::rectangle{gradient="accent1,dk1@50,lt2" gradient-angle=45}
+
+        ::circle{gradient="accent2,accent1" gradient-radial}
+        MARKDOWN,
+    'a shape that bleeds off the edge' => <<<'MARKDOWN'
+        ::ellipse{left=-8% top=62% width=22% height=34% fill=panel bleed=true}
+        MARKDOWN,
+]);
+
+it('refuses a deck directive on a slide other than the first', function (string $key, string $value) {
+    $conversion = new OfficeConversion(new FakeMediaLibrary());
+
+    $caught = null;
+
+    try {
+        $conversion->markdownToPresentation(
+            "---\ntitle: A deck\n---\n\n# One\n\n---\n{$key}: {$value}\n---\n\n# Two\n",
+        );
+    } catch (OfficeDocumentException $e) {
+        $caught = $e;
+    }
+
+    expect($caught)->toBeInstanceOf(OfficeDocumentException::class)
+        ->and($caught->getMessage())->toContain('slide 2');
+})->with([
+    'theme' => ['theme', 'pitch'],
+    'author' => ['author', 'Ops'],
+    'description' => ['description', 'A deck'],
+    'deck-settings' => ['deck-settings', "background: \"#101014\""],
+]);
 
 it('refuses a deck that is not a deck', function () {
     $conversion = new OfficeConversion(new FakeMediaLibrary());

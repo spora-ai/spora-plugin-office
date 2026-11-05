@@ -72,3 +72,63 @@ it('says media themes need the core that carries the folders', function () {
     expect($readme)->toContain('0097')
         ->and($readme)->toContain('v0.33.0');
 });
+
+it('says a theme is one file', function (string $name) {
+    $skill = officeSkillText($name);
+
+    // The old format's files are refused beside a theme's look, so a skill
+    // describing the old layout would build a folder that no longer renders.
+    expect($skill)->toContain('A theme is one file');
+})->with(['office-documents', 'office-presentations']);
+
+it('names the licence of the package underneath the library', function (string $name) {
+    $skill = officeSkillText($name);
+
+    // Both halves write through a PHPOffice package and both are LGPL-3.0; the
+    // plugin and the library are MIT, so a claim about the package underneath
+    // is the one that would be wrong.
+    expect($skill)->toContain('LGPL-3.0');
+})->with(['office-documents', 'office-presentations']);
+
+it('lists the deck frontmatter keys the renderer reads', function () {
+    $skill = officeSkillText('office-presentations');
+
+    // The list is closed: a key missing from it is one the agent is told not
+    // to write.
+    expect($skill)->toContain('`deck-settings`')
+        ->and($skill)->toContain('`template-settings`')
+        ->and($skill)->toContain('`background-gradient`')
+        ->and($skill)->toContain('`theme-variables`');
+});
+
+it('does not describe the quote loss as an indentation again', function () {
+    // A quote's own line breaks are joined into one line — that is the loss.
+    // "A quote written as plain indentation" was never it: four spaces of
+    // indentation is a code block in Markdown.
+    expect(officeSkillText('office-documents'))->not->toContain('a quote written as plain indentation')
+        ->and(officeReadmeText())->not->toContain('a quote written as plain indentation');
+});
+
+it('counts the round-trip losses the same way in the README and in the skill', function () {
+    // The named-style loss joined the five, so there are six. A count that
+    // drifts between the two documents is a count a reader cannot rely on.
+    // The whitespace is folded, because a line break in the middle of the
+    // count is not a different count.
+    $readme = (string) preg_replace('/\s+/', ' ', officeReadmeText());
+    $skill  = (string) preg_replace('/\s+/', ' ', officeSkillText('office-documents'));
+
+    expect($readme)->not->toContain('five documented round-trip losses')
+        ->and($readme)->toContain('Six documented losses')
+        ->and($skill)->toContain('Six losses');
+});
+
+it('tells the operator to rebuild the patch lock after an upgrade', function () {
+    $readme = officeReadmeText();
+
+    // The patches that are applied are the ones in the host's own lock, and a
+    // lock written before the PHPWord patch names no PHPWord patch: the Word
+    // half then writes a document that is not valid Office Open XML, and it
+    // says nothing while it does.
+    expect($readme)->toContain('composer patches-relock')
+        ->and($readme)->toContain('composer patches-repatch');
+});

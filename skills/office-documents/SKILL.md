@@ -21,6 +21,9 @@ already in your context.
 
 Worked end-to-end examples: `skill(action: "read", name: "office-documents", filename: "examples.md")`.
 
+The vocabulary — every directive, its attributes, and the named text styles — is
+in the [reference](reference.md): `skill(action: "read", name: "office-documents", filename: "reference.md")`. Read it when you need the exact spelling of something; the rules are here.
+
 ## The chain
 
 Markdown in, `.docx` out, in two calls on the `media` tool. There is no third

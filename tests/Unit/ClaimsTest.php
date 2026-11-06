@@ -209,3 +209,12 @@ it('does not say a slide may carry an HTML comment', function () {
     expect($skill)->not->toContain('inside a fenced code block or an HTML comment does **not** split')
         ->and($skill)->toContain('a slide cannot carry one at all');
 });
+
+it('says a frontmatter block carries its own separator', function () {
+    $skill = officeSkillText('office-presentations');
+
+    // The `---` that opens a slide's frontmatter is that slide's separator.
+    // Reading the two as separate things is what produces a deck with an
+    // empty slide in the middle of it.
+    expect($skill)->toContain('there is never one in front of it');
+});

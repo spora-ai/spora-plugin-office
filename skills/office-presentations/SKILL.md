@@ -24,6 +24,9 @@ report. Read [The dialect](#the-dialect) before you write the first deck.
 
 Worked end-to-end examples: `skill(action: "read", name: "office-presentations", filename: "examples.md")`.
 
+The vocabulary — every directive, key, attribute and colour, in one place — is
+in the [reference](reference.md): `skill(action: "read", name: "office-presentations", filename: "reference.md")`. Read it when you need the exact spelling of something; the rules are here.
+
 ## The chain
 
 Markdown in, `.pptx` out, in two calls on the `media` tool.
@@ -95,11 +98,13 @@ Say the number out loud.
 ::
 ```
 
-- `---` on a line of its own **closes the slide being read**. A `---` followed
-  by a block and another `---` is a frontmatter block for the next slide, and
-  **the block has to start on the line right after the `---`** — a blank line
-  in between is not a frontmatter block, and the block is then read as the next
-  slide's own content.
+- `---` on a line of its own **closes the slide being read**.
+- **The `---` that opens a slide's frontmatter is that slide's separator.**
+  There is no separator *before* it: a `---` followed by a block and another
+  `---` is the frontmatter of the next slide, and **the block has to start on
+  the line right after the first `---`** — a blank line in between is not a
+  frontmatter block, and the block is then read as the next slide's own
+  content.
 - A thematic break inside a slide is `***`, not `---`. There is no other way to
   write one.
 - A `---` inside a fenced code block does **not** split a slide. An HTML
@@ -133,6 +138,40 @@ Say the number out loud.
 
 The rules are the ones Slidev uses, so a dialect a model already writes is the
 dialect worth writing.
+
+### Separating slides
+
+**A slide with its own frontmatter is written with one `---`, not two.**
+
+```markdown
+# Slide A
+
+---
+layout: section
+---
+
+# Slide B
+```
+
+Two `---` in a row — a separator, and then a frontmatter block that opens with
+its own — give you an **empty slide between the two**:
+
+```markdown
+# Slide A
+
+---
+
+---
+layout: section
+---
+
+# Slide B
+```
+
+That is three slides: *Slide A*, an empty one, and *Slide B*. The first `---`
+closes the slide you were on, and the second closes a slide that has nothing in
+it. The frontmatter belongs to the slide the `---` opened, so the `---` that
+carries it **is** the separator — there is never one in front of it.
 
 ## Themes
 
@@ -206,14 +245,11 @@ the render fails saying so: the content belongs in the `layouts:` and
 deleted as well. A folder left over from the older multi-file format needs
 that fix before it renders at all.
 
-A theme with **no** `layouts:` section is drawn with the renderer's own
-mapping of the eight roles onto the Office layout names — `title` is "Title
-Slide", `content` is "Title and Content", `two-column` is "Two Content",
-`section` is "Section Header", `blank` is "Blank", `image-text` is "Picture
-Left", `image-title` is "Picture with Caption" and `image-slide` is "Full
-Bleed Picture". A theme **with** a `layouts:` section has the whole mapping: a
-role it does not name is a role the theme does not map, and the deck that asks
-for one is told which roles it does map.
+A theme with **no** `layouts:` section is drawn with the renderer's own mapping
+of the eight roles onto the Office layout names, which the
+[reference](reference.md) lists. A theme **with** a `layouts:` section has the
+whole mapping: a role it does not name is a role the theme does not map, and
+the deck that asks for one is told which roles it does map.
 
 The same file may carry the document half's look as well — a `styles:` section
 — so **one folder can serve a deck and a document**: each half reads the
@@ -270,23 +306,8 @@ background: accent1
 ---
 ```
 
-```markdown
----
-layout: blank
-background-gradient: "accent1,dk1@50,lt2"
-background-angle: 45
----
-```
-
-```markdown
----
-layout: blank
-theme-variables:
-  dark: true
-  colors:
-    accent1: "#7AA2F7"
----
-```
+A gradient and a slide's own theme values are written the same way; the
+[reference](reference.md) has an example of each.
 
 | Key | |
 | --- | --- |
@@ -335,25 +356,11 @@ layout: blank
 :::
 ```
 
-| Directive | Draws |
-| --- | --- |
-| `::rectangle` `::roundrect` `::ellipse` `::circle` | a rectangle, a rounded one, an ellipse, a circle |
-| `::triangle` `::diamond` `::chevron` `::hexagon` `::arrow` | the shape it names |
-| `::line` | a hairline rule, as thick as its `stroke-width` |
-| `::image` | a picture |
-| `::slide-number` | the number of the slide, and with `of=true` the number of the deck after it |
-| `:::content` … `:::` | Markdown, in a box you sized |
-
-| Attribute | Default | |
-| --- | --- | --- |
-| `left`, `top` | `0` | where the box starts |
-| `width`, `height` | `100%` | its size, so a shape with no attributes is full bleed |
-| `anchor` | `nw` | which corner `left` and `top` name: `nw` `n` `ne` `e` `se` `s` `sw` `w` `center` |
-| `layer` | `front` | `back` writes the shape before the layout's own, `front` after |
-| `rotate` | `0` | degrees clockwise, about the middle of the box |
-| `bleed` | `false` | whether the shape may run off the edge of the slide |
-| `fill`, `stroke` | | the colours, six hexadecimal digits or a theme slot |
-| `gradient`, `gradient-angle`, `gradient-radial` | | a gradient instead of a colour |
+The shapes are `::rectangle` `::roundrect` `::ellipse` `::circle` `::triangle`
+`::diamond` `::chevron` `::hexagon` `::arrow` `::line` `::image`
+`::slide-number` and `:::content` … `:::`, and their attributes are listed in
+the [reference](reference.md) — the placement, the paint, the colours and the
+text of a shape are all there.
 
 **A box lies within the slide**, and one that does not is refused with the
 numbers rather than clamped — a shape quietly drawn somewhere other than where

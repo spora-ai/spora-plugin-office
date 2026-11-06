@@ -46,6 +46,18 @@ it('renders every markdown block the document skill shows', function (string $ma
         ->and(strlen($output->bytes))->toBeGreaterThan(1000);
 })->with(officeSkillMarkdownBlocks('office-documents'));
 
+it('renders every markdown block the document reference shows', function (string $markdown) {
+    $producer = OfficeMediaArchive::producer(OfficeMediaArchive::container());
+
+    $output = $producer->produce(
+        OfficeMediaArchive::dataUrlAsset($markdown),
+        'docx',
+    );
+
+    expect(substr($output->bytes, 0, 2))->toBe('PK')
+        ->and(strlen($output->bytes))->toBeGreaterThan(1000);
+})->with(officeSkillMarkdownBlocks('office-documents', 'reference.md'));
+
 it('renders every markdown block the presentation skill shows', function (string $markdown) {
     $producer = OfficeMediaArchive::deckProducer(OfficeMediaArchive::container());
 
@@ -69,6 +81,18 @@ it('renders every markdown block the presentation examples show', function (stri
     expect(substr($output->bytes, 0, 2))->toBe('PK')
         ->and(strlen($output->bytes))->toBeGreaterThan(1000);
 })->with(officeSkillMarkdownBlocks('office-presentations', 'examples.md'));
+
+it('renders every markdown block the presentation reference shows', function (string $markdown) {
+    $producer = OfficeMediaArchive::deckProducer(OfficeMediaArchive::container());
+
+    $output = $producer->produce(
+        OfficeMediaArchive::dataUrlAsset($markdown),
+        'pptx',
+    );
+
+    expect(substr($output->bytes, 0, 2))->toBe('PK')
+        ->and(strlen($output->bytes))->toBeGreaterThan(1000);
+})->with(officeSkillMarkdownBlocks('office-presentations', 'reference.md'));
 
 it('ships at least one deck example', function () {
     expect(officeSkillMarkdownBlocks('office-presentations', 'examples.md'))->not->toBe([]);

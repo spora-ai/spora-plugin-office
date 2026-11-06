@@ -169,8 +169,10 @@ a silently half-working plugin.
 
 - 2 skills (`office-documents`, `office-presentations`) — the two-call chain,
   the theme catalogue, the six documented round-trip losses, the image rules,
-  the approval and idempotency rules. Each ships an `examples.md` beside it,
-  and every Markdown block in all four files is rendered by the test suite.
+  the approval and idempotency rules. Each ships an `examples.md` beside it
+  and a `reference.md` — the closed vocabulary of directives, keys and
+  attributes — and every Markdown block in all six files is rendered by the
+  test suite.
 - 5 media-archive registrations: four derivative producers and a MIME refiner
   (table below).
 - 3 exception classes, mirroring the Typst plugin's shape.
@@ -479,10 +481,12 @@ clear is needed between runs.
 ├── skills/
 │   ├── office-documents/                     # the chain, the themes, the six round-trip losses
 │   │   ├── SKILL.md
-│   │   └── examples.md                       # three worked exchanges
+│   │   ├── examples.md                       # three worked exchanges
+│   │   └── reference.md                      # the directives, their attributes, the text styles
 │   └── office-presentations/                 # the deck dialect, the themes, the deck's limits
 │       ├── SKILL.md
-│       └── examples.md                       # five worked exchanges
+│       ├── examples.md                       # five worked exchanges
+│       └── reference.md                      # the layouts, the markers, the shapes, the colours
 ├── tests/
 │   ├── Pest.php                             # resets all three discovery registries in afterEach
 │   ├── bootstrap.php

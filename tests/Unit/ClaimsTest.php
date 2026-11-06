@@ -132,3 +132,71 @@ it('tells the operator to rebuild the patch lock after an upgrade', function () 
     expect($readme)->toContain('composer patches-relock')
         ->and($readme)->toContain('composer patches-repatch');
 });
+
+it('does not claim that a derivative render needs an approval', function (string $name) {
+    $skill = officeSkillText($name);
+
+    // `create_derivative` is auto-approved by default: it writes a row derived
+    // from a parent the agent already owns. `create_media` is the one that
+    // asks the operator, because it has no natural key to make a retry safe.
+    expect($skill)->not->toContain('Both `create_media` and `create_derivative` require operator approval')
+        ->and($skill)->toMatch('/`create_derivative`\s+is auto-approved/');
+})->with(['office-documents', 'office-presentations']);
+
+it('does not claim that reading a document back is approval-gated', function () {
+    $skill = officeSkillText('office-documents');
+
+    // `get_source` is auto-approved by default. The 8 KB that was claimed for
+    // it is the `get_media` preview cap; `get_source` inlines the whole
+    // extracted text up to 64 KB.
+    expect($skill)->not->toContain('always approval-gated')
+        ->and($skill)->not->toContain('truncated to 8 KB')
+        ->and($skill)->toContain('truncated to 64 KB');
+});
+
+it('does not document a download card core does not produce', function (string $name) {
+    $skill = officeSkillText($name);
+
+    // Core's card is Tailwind utilities with a glyph class and a span holding
+    // the file size. The class names below were never emitted by any core
+    // version, and the MIME type is not on the card at all.
+    expect($skill)->not->toContain('spora-file-card__link')
+        ->and($skill)->not->toContain('spora-file-card__name')
+        ->and($skill)->not->toContain('spora-file-card__meta');
+})->with(['office-documents', 'office-presentations']);
+
+it('documents the download card core produces', function () {
+    $skill = officeSkillText('office-documents');
+
+    expect($skill)->toContain('spora-file-card__glyph')
+        ->and($skill)->toContain('The card carries the filename and the size, and nothing else');
+});
+
+it('does not name a document theme as a deck theme', function () {
+    $skill = officeSkillText('office-presentations');
+
+    // The two halves ship their own built-ins. `corporate` is one of the
+    // Word half's four, so a deck naming it fails with a message listing the
+    // five the slides half has.
+    expect($skill)->not->toMatch('/theme: corporate(?!-)/')
+        ->and($skill)->not->toMatch('/"corporate"(?![\w-])/')
+        ->and($skill)->toContain('`corporate` is a document theme, not a deck theme');
+});
+
+it('does not describe a column marker as the only way to have two columns', function () {
+    $skill = officeSkillText('office-presentations');
+
+    // The layout gives the slide its columns; the marker moves the blocks
+    // between them. A two-column slide that writes no marker fills the first
+    // column and leaves the rest empty.
+    expect($skill)->not->toContain('the only way to have two columns')
+        ->and($skill)->toContain('fills the first column and leaves the rest empty');
+});
+
+it('names the deck-level frontmatter keys the renderer reads', function () {
+    $skill = officeSkillText('office-presentations');
+
+    // `templates-file` belongs to the deck: on any slide but the first it is
+    // a failure that says so, exactly as `theme` is.
+    expect($skill)->toContain('`theme`, `author`, `description`, `templates-file` and `deck-settings`');
+});

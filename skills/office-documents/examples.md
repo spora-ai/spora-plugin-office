@@ -82,7 +82,7 @@ line of prose. Nothing is invented, and the card is echoed exactly as returned.
 
 > Here's the Q3 report as a Word document:
 >
-> <div class="spora-file-card"><a class="spora-file-card__link" href="/api/v1/assets/1c4e9b02d7f84a6bb3e5c9d1a70f28be.docx"><span class="spora-file-card__name">q3-report.docx</span><span class="spora-file-card__meta">18.2 KB · application/vnd.openxmlformats-officedocument.wordprocessingml.document</span></a></div>
+> <div class="inline-flex max-w-120 my-[0.6rem] rounded-lg border border-foreground/10 bg-muted"><a class="flex min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-inherit no-underline transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-ring spora-file-card__glyph" href="/api/v1/assets/1c4e9b02d7f84a6bb3e5c9d1a70f28be.docx"><span class="min-w-0 flex-auto truncate font-medium">q3-report.docx</span><span class="shrink-0 text-xs text-muted-foreground">18.2 KB</span></a></div>
 >
 > The Markdown source is kept alongside it, so I can re-render an updated version
 > without you re-pasting anything.
@@ -128,8 +128,8 @@ Three things to get right here:
 - **Only reach for a tool when the text is genuinely not there.** A truncated
   extraction (the inline preview is capped), a table that came through garbled,
   or a document the user did not attach at all — those are the cases where
-  `media(action: "get_source", asset_id: "<uuid>")` is the right move, and it
-  costs an approval, so say why you need it.
+  `media(action: "get_source", asset_id: "<uuid>")` is the right move. It
+  returns the whole extracted text, up to 64 KB, so say why you need it.
 
 ## Example 3 — editing an existing document
 

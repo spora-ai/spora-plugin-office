@@ -80,7 +80,7 @@ A document asset renders in chat as a **download card**, not a bare markdown
 link:
 
 ```html
-<div class="spora-file-card"><a class="spora-file-card__link" href="/api/v1/assets/<uuid>.docx"><span class="spora-file-card__name">q3-report.docx</span><span class="spora-file-card__meta">18.2 KB · application/vnd.openxmlformats-officedocument.wordprocessingml.document</span></a></div>
+<div class="inline-flex max-w-120 my-[0.6rem] rounded-lg border border-foreground/10 bg-muted"><a class="flex min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-inherit no-underline transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-ring spora-file-card__glyph" href="/api/v1/assets/<uuid>.docx"><span class="min-w-0 flex-auto truncate font-medium">q3-report.docx</span><span class="shrink-0 text-xs text-muted-foreground">18.2 KB</span></a></div>
 ```
 
 `create_media`, `create_derivative` and `get_media` all return one, because the
@@ -91,6 +91,15 @@ hand-roll `[q3-report.docx](url)` in its place, and do not try to reproduce or
 explain the internals: the filename and the `href` are the whole contract. The
 `div`/`span` wrappers are CSS chrome, there is no icon element, and there is no
 `aria-hidden` to add.
+
+**The card carries the filename and the size, and nothing else.** There is no
+MIME type on it — the extension on the filename already says what the file is —
+and the size is left out when the archive does not know it.
+
+The class names are core's own styling mechanism, and the markup above is a
+copy of it. Echo the block the response gives you; do not rebuild one from this
+example, because a class that is not on core's list renders as an unstyled
+card with no error anywhere.
 
 So the two-call chain above needs no third call to surface the file: step 2's
 response already carries the card for the `.docx` it just rendered.
@@ -236,6 +245,10 @@ A theme's `textStyles:` section names the styles a document may write a word
 in. The built-in `corporate` theme brings two of them — `brand` and `muted`:
 
 ```markdown
+---
+theme: corporate
+---
+
 Resilience :brand[Bakery] is open.
 ```
 
@@ -371,10 +384,14 @@ them the images are placeholders.
 
 ## Approval
 
-Both `create_media` and `create_derivative` require operator approval per call.
-Expect a prompt before either returns.
+**`create_media` asks the operator to approve each call**, so expect a prompt
+before it returns. **`create_derivative` is auto-approved** — it writes a row
+derived from a parent the agent already owns, so the render comes back without
+one. That is the shipped default and not a promise: an operator can gate
+either operation for a given agent, and the override wins. Read the live state
+with `read_agent` when it matters.
 
-**Do not tell the user the document exists before the approval resolves.** No
+**Do not tell the user the document exists before an approval resolves.** No
 `asset_id`, no download card, no "here's your file" — a refused or expired
 approval means nothing was written. Wait for the response, then report what it
 returned. When a call is queued behind an approval, carry the pending
@@ -399,8 +416,8 @@ The archive itself is reachable when you need more:
 ```
 
 `get_source` on a binary mime returns the extracted Markdown from that `md`
-derivative (truncated to 8 KB), which is the shape you can actually iterate on —
-not the DOCX bytes. It is off by default and always approval-gated; do not call
+derivative (truncated to 64 KB), which is the shape you can actually iterate on —
+not the DOCX bytes. It is off by default and auto-approved; do not call
 it when the text is already in front of you.
 
 A corrupt or hostile `.docx` degrades quietly: the upload still succeeds, the

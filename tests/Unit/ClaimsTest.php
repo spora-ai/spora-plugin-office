@@ -200,3 +200,12 @@ it('names the deck-level frontmatter keys the renderer reads', function () {
     // a failure that says so, exactly as `theme` is.
     expect($skill)->toContain('`theme`, `author`, `description`, `templates-file` and `deck-settings`');
 });
+
+it('does not say a slide may carry an HTML comment', function () {
+    $skill = officeSkillText('office-presentations');
+
+    // A comment does not split a slide, but the renderer refuses a slide that
+    // carries one — so "does not split a slide" reads as permission.
+    expect($skill)->not->toContain('inside a fenced code block or an HTML comment does **not** split')
+        ->and($skill)->toContain('a slide cannot carry one at all');
+});

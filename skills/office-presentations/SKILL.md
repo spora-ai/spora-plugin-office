@@ -102,8 +102,10 @@ Say the number out loud.
   slide's own content.
 - A thematic break inside a slide is `***`, not `---`. There is no other way to
   write one.
-- A `---` inside a fenced code block or an HTML comment does **not** split a
-  slide.
+- A `---` inside a fenced code block does **not** split a slide. An HTML
+  comment does not split one either, but a slide cannot carry one at all: the
+  render is refused with a message naming the comment, and the answer is a
+  fenced code block.
 - The **first heading of a slide is its title**. A `##` after it is ordinary
   content.
 - `::note` … `::` is the speaker note, and it has to be the last thing on the

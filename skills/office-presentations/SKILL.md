@@ -22,6 +22,11 @@ A deck is **not** a long document. It is a sequence of slides, and the Markdown
 that describes one is a different dialect from the Markdown that describes a
 report. Read [The dialect](#the-dialect) before you write the first deck.
 
+Worked end-to-end examples: `skill(action: "read", name: "office-presentations", filename: "examples.md")`.
+
+The vocabulary — every directive, key, attribute and colour, in one place — is
+in the [reference](reference.md): `skill(action: "read", name: "office-presentations", filename: "reference.md")`. Read it when you need the exact spelling of something; the rules are here.
+
 ## The chain
 
 Markdown in, `.pptx` out, in two calls on the `media` tool.
@@ -74,7 +79,7 @@ deck's.
 ```markdown
 ---
 title: Q3 review
-theme: corporate
+theme: corporate-dark
 ---
 
 # Q3 review
@@ -93,24 +98,30 @@ Say the number out loud.
 ::
 ```
 
-- `---` on a line of its own **closes the slide being read**. A `---` followed
-  by a block and another `---` is a frontmatter block for the next slide, and
-  **the block has to start on the line right after the `---`** — a blank line
-  in between is not a frontmatter block, and the block is then read as the next
-  slide's own content.
+- `---` on a line of its own **closes the slide being read**.
+- **The `---` that opens a slide's frontmatter is that slide's separator.**
+  There is no separator *before* it: a `---` followed by a block and another
+  `---` is the frontmatter of the next slide, and **the block has to start on
+  the line right after the first `---`** — a blank line in between is not a
+  frontmatter block, and the block is then read as the next slide's own
+  content.
 - A thematic break inside a slide is `***`, not `---`. There is no other way to
   write one.
-- A `---` inside a fenced code block or an HTML comment does **not** split a
-  slide.
+- A `---` inside a fenced code block does **not** split a slide. An HTML
+  comment does not split one either, but a slide cannot carry one at all: the
+  render is refused with a message naming the comment, and the answer is a
+  fenced code block.
 - The **first heading of a slide is its title**. A `##` after it is ordinary
   content.
 - `::note` … `::` is the speaker note, and it has to be the last thing on the
   slide.
-- `::column` on a line of its own moves everything below it into the next
-  column — the only way to have two columns, and there is no way back: the
-  marker means "the next column". **The slide's layout has to have more than
-  one column** — `two-column` or `image-text`; on a `content` slide it is a
-  failure that says so. The marker takes no argument.
+- `::column` on a line of its own moves everything below it into the **next**
+  column, and there is no way back. The layout gives the slide its columns; the
+  marker moves the blocks between them. **There must be fewer markers than the
+  layout has columns**: a `content` slide has one column and takes no marker,
+  `two-column` and `image-text` have two and take one, and a second marker on a
+  two-column slide is refused. The marker takes no argument, and a slide that
+  writes none fills the first column and leaves the rest empty.
 - `layout:` names the slide's shape: `title`, `content`, `two-column`,
   `section`, `blank`, `image-text`, `image-title`, `image-slide`. It is the
   deck's choice, and the theme decides what each of those looks like.
@@ -120,13 +131,47 @@ Say the number out loud.
   `background-angle`, `background-radial` and `theme-variables`.
   **A key outside that list fails the render** — so do not invent one, and do
   not carry a document's frontmatter over into a deck.
-- `theme`, `author`, `description` and `deck-settings` describe the **deck**,
-  so they belong in slide 1's frontmatter. On any other slide they are a
-  failure that says so, because two slides naming a theme is a deck that
-  renders one of them and says nothing about the other.
+- `theme`, `author`, `description`, `templates-file` and `deck-settings`
+  describe the **deck**, so they belong in slide 1's frontmatter. On any other
+  slide they are a failure that says so, because two slides naming a theme is
+  a deck that renders one of them and says nothing about the other.
 
 The rules are the ones Slidev uses, so a dialect a model already writes is the
 dialect worth writing.
+
+### Separating slides
+
+**A slide with its own frontmatter is written with one `---`, not two.**
+
+```markdown
+# Slide A
+
+---
+layout: section
+---
+
+# Slide B
+```
+
+Two `---` in a row — a separator, and then a frontmatter block that opens with
+its own — give you an **empty slide between the two**:
+
+```markdown
+# Slide A
+
+---
+
+---
+layout: section
+---
+
+# Slide B
+```
+
+That is three slides: *Slide A*, an empty one, and *Slide B*. The first `---`
+closes the slide you were on, and the second closes a slide that has nothing in
+it. The frontmatter belongs to the slide the `---` opened, so the `---` that
+carries it **is** the separator — there is never one in front of it.
 
 ## Themes
 
@@ -135,7 +180,7 @@ layouts. A deck names one in its **frontmatter**:
 
 ```markdown
 ---
-theme: corporate
+theme: corporate-dark
 ---
 ```
 
@@ -150,6 +195,10 @@ The ones that ship with the renderer, always available:
 | `minimal` | dense text-first decks, with as little on a slide as the text needs |
 | `dense` | small type and tight gaps, for a deck that has to hold a page |
 | `pitch` | black, gold and one blue, for a pitch or a proposal |
+
+**`corporate` is a document theme, not a deck theme.** The two halves ship their
+own built-ins; a deck naming `corporate` fails with a message listing the five
+above.
 
 And the ones the media library holds. A theme is a **folder** in the media
 library whose name is the theme's name; list them with
@@ -172,8 +221,8 @@ A theme name is a **folder name, not a path**. `theme: ../something` names no
 folder of yours and the render fails saying so.
 
 **A theme named in the call outranks the frontmatter.** `options: {"theme":
-"corporate"}` answers for the deck: the frontmatter's `theme:` is not read. A
-theme that does not exist fails the render with a message naming it.
+"corporate-dark"}` answers for the deck: the frontmatter's `theme:` is not
+read. A theme that does not exist fails the render with a message naming it.
 
 **A theme is one file.** The folder holds a `theme.yml` and the palette, the
 layout roles and the named text styles are sections of it:
@@ -196,14 +245,11 @@ the render fails saying so: the content belongs in the `layouts:` and
 deleted as well. A folder left over from the older multi-file format needs
 that fix before it renders at all.
 
-A theme with **no** `layouts:` section is drawn with the renderer's own
-mapping of the eight roles onto the Office layout names — `title` is "Title
-Slide", `content` is "Title and Content", `two-column` is "Two Content",
-`section` is "Section Header", `blank` is "Blank", `image-text` is "Picture
-Left", `image-title` is "Picture with Caption" and `image-slide` is "Full
-Bleed Picture". A theme **with** a `layouts:` section has the whole mapping: a
-role it does not name is a role the theme does not map, and the deck that asks
-for one is told which roles it does map.
+A theme with **no** `layouts:` section is drawn with the renderer's own mapping
+of the eight roles onto the Office layout names, which the
+[reference](reference.md) lists. A theme **with** a `layouts:` section has the
+whole mapping: a role it does not name is a role the theme does not map, and
+the deck that asks for one is told which roles it does map.
 
 The same file may carry the document half's look as well — a `styles:` section
 — so **one folder can serve a deck and a document**: each half reads the
@@ -215,6 +261,10 @@ A theme's `textStyles:` section names the styles a deck may write a word in.
 The built-in `corporate-dark` theme brings two of them — `brand` and `muted`:
 
 ```markdown
+---
+theme: corporate-dark
+---
+
 Resilience :brand[Bakery] is open.
 ```
 
@@ -256,23 +306,8 @@ background: accent1
 ---
 ```
 
-```markdown
----
-layout: blank
-background-gradient: "accent1,dk1@50,lt2"
-background-angle: 45
----
-```
-
-```markdown
----
-layout: blank
-theme-variables:
-  dark: true
-  colors:
-    accent1: "#7AA2F7"
----
-```
+A gradient and a slide's own theme values are written the same way; the
+[reference](reference.md) has an example of each.
 
 | Key | |
 | --- | --- |
@@ -321,25 +356,11 @@ layout: blank
 :::
 ```
 
-| Directive | Draws |
-| --- | --- |
-| `::rectangle` `::roundrect` `::ellipse` `::circle` | a rectangle, a rounded one, an ellipse, a circle |
-| `::triangle` `::diamond` `::chevron` `::hexagon` `::arrow` | the shape it names |
-| `::line` | a hairline rule, as thick as its `stroke-width` |
-| `::image` | a picture |
-| `::slide-number` | the number of the slide, and with `of=true` the number of the deck after it |
-| `:::content` … `:::` | Markdown, in a box you sized |
-
-| Attribute | Default | |
-| --- | --- | --- |
-| `left`, `top` | `0` | where the box starts |
-| `width`, `height` | `100%` | its size, so a shape with no attributes is full bleed |
-| `anchor` | `nw` | which corner `left` and `top` name: `nw` `n` `ne` `e` `se` `s` `sw` `w` `center` |
-| `layer` | `front` | `back` writes the shape before the layout's own, `front` after |
-| `rotate` | `0` | degrees clockwise, about the middle of the box |
-| `bleed` | `false` | whether the shape may run off the edge of the slide |
-| `fill`, `stroke` | | the colours, six hexadecimal digits or a theme slot |
-| `gradient`, `gradient-angle`, `gradient-radial` | | a gradient instead of a colour |
+The shapes are `::rectangle` `::roundrect` `::ellipse` `::circle` `::triangle`
+`::diamond` `::chevron` `::hexagon` `::arrow` `::line` `::image`
+`::slide-number` and `:::content` … `:::`, and their attributes are listed in
+the [reference](reference.md) — the placement, the paint, the colours and the
+text of a shape are all there.
 
 **A box lies within the slide**, and one that does not is refused with the
 numbers rather than clamped — a shape quietly drawn somewhere other than where
@@ -419,9 +440,13 @@ forty slides of dense prose is a document; render it as one with `format:
 
 ## Approval
 
-Both `create_media` and `create_derivative` require operator approval per call.
+**`create_media` asks the operator to approve each call.** **`create_derivative`
+is auto-approved** — it writes a row derived from a parent the agent already
+owns, so the render comes back without one. That is the shipped default and
+not a promise: an operator can gate either operation for a given agent, and the
+override wins. Read the live state with `read_agent` when it matters.
 
-**Do not tell the user the deck exists before the approval resolves.** No
+**Do not tell the user the deck exists before an approval resolves.** No
 `asset_id`, no download card, no "here's your file". Wait for the response,
 then report what it returned.
 

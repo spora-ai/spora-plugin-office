@@ -501,7 +501,7 @@ clear is needed between runs.
 
 Five jobs (the standard Spora-plugin CI, plus the skeleton boot):
 
-- `test` — Pest on `ubuntu-latest`, PHP 8.4 + 8.5. PHP 8.4 also writes the
+- `test` — Pest on `ubuntu-latest`, PHP 8.4 + 8.5 + 8.6. PHP 8.4 also writes the
   coverage report the SonarCloud job ingests.
 - `static-analysis` — PHPStan level 5 (memory limit 512M).
 - `code-style` — `php-cs-fixer` dry-run.

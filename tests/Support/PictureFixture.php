@@ -29,7 +29,23 @@ final class PictureFixture
      */
     public static function bytes(): string
     {
-        $bytes = base64_decode(self::BASE64, true);
+        return self::decode(self::BASE64);
+    }
+
+    /**
+     * The bytes a base64 payload carries, or a refusal when it carries none.
+     *
+     * The payload arrives as an argument rather than as the constant itself
+     * because `base64_decode()` on a literal is resolved while the code is
+     * analysed: a guard written inline against the constant compares a value
+     * the analyser has already settled, and the constant is exactly what the
+     * guard is there to police. Folded back in, the check stops being one.
+     *
+     * @throws FixtureException when the payload is not valid base64
+     */
+    private static function decode(string $base64): string
+    {
+        $bytes = base64_decode($base64, true);
 
         if ($bytes === false) {
             throw new FixtureException('The picture fixture is not valid base64.');

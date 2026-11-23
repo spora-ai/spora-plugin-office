@@ -78,8 +78,8 @@ jobs:
         # PHP 8.4 also produces the coverage report + JUnit XML so the
         # SonarCloud scan job below has something to ingest: the Pest job
         # writes clover.xml and junit.xml, which is what
-        # sonar-project.properties points at. PHP 8.5 runs the suite in
-        # plain mode — its purpose is to surface syntax / runtime diffs
+        # sonar-project.properties points at. PHP 8.5 and 8.6 run the suite
+        # in plain mode — their purpose is to surface syntax / runtime diffs
         # across PHP versions.
         run: |
           if [ "${{ matrix.php }}" = "8.4" ]; then
@@ -94,8 +94,8 @@ jobs:
           fi
 
       - name: Upload coverage artifacts
-        # Only upload from the PHP 8.4 build — the 8.5 matrix sibling
-        # is identical source-wise and would race the upload step.
+        # Only upload from the PHP 8.4 build — the 8.5 and 8.6 matrix
+        # siblings are identical source-wise and would race the upload step.
         if: matrix.php == '8.4'
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
